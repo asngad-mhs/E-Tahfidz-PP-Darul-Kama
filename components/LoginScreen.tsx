@@ -49,6 +49,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ apiUrl, setApiUrl, onL
                 throw new Error("ID dan Kata Sandi wajib diisi.");
             }
 
+            // Hardcoded admin login
+            if (id === 'admin' && password === 'admin123') {
+                setLoading(false);
+                onLoginSuccess({
+                    nama: 'Administrator',
+                    role: 'admin'
+                });
+                return;
+            }
+
             const result = await callAPI(currentUrl, {
                 action: 'login',
                 id: id,
