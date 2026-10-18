@@ -1,4 +1,4 @@
-import { Santri, SetoranRecord, User, JuzProgressRecord } from './types';
+import { Santri, SetoranRecord, User, JuzProgressRecord, JurnalBelajarSantri, RencanaSetoran } from './types';
 
 export interface QuranSurah {
     nomor: number;
@@ -250,7 +250,16 @@ export const INITIAL_SANTRI: Santri[] = [
         totalHafalanJuz: 7,
         suratTerakhir: "Al-A'raf : 1 - 50",
         status: 'Aktif',
-        juzProgress: createDefaultJuzProgress(7)
+        juzProgress: createDefaultJuzProgress(7),
+        targetKhatam: 'Ramadhan 1448 H',
+        targetHalamanPerHari: 1,
+        streakHari: 14,
+        lastReadBookmark: {
+            surat: "Al-A'raf",
+            ayat: 45,
+            juz: 8,
+            tanggal: '2026-10-17'
+        }
     },
     {
         id: 's-2',
@@ -384,6 +393,80 @@ export const INITIAL_SETORAN: SetoranRecord[] = [
         nilai: 'B (Jayyid Jiddan)',
         musyrif: 'Ustadz Abdullah',
         catatan: 'Tingkatkan pengucapan makhraj huruf kha dan shod'
+    }
+];
+
+export const INITIAL_JURNAL_BELAJAR: JurnalBelajarSantri[] = [
+    {
+        id: 'jrn-1',
+        santriId: 's-1',
+        tanggal: '2026-10-17',
+        kegiatan: 'Ziyadah Mandiri',
+        surat: "Al-A'raf",
+        ayatAwal: 26,
+        ayatAkhir: 45,
+        juz: 8,
+        durasiMenit: 45,
+        tingkatKelancaran: 'Sangat Lancar',
+        catatanAyatSulit: 'Ayat 34 ada waqaf lazim, ayat 40 hati-hati kata hattā yalija',
+        status: 'Selesai'
+    },
+    {
+        id: 'jrn-2',
+        santriId: 's-1',
+        tanggal: '2026-10-17',
+        kegiatan: "Muroja'ah Mandiri",
+        surat: "Al-An'am",
+        ayatAwal: 1,
+        ayatAkhir: 60,
+        juz: 7,
+        durasiMenit: 35,
+        tingkatKelancaran: 'Sangat Lancar',
+        catatanAyatSulit: 'Muroja\'ah rubu\' awal Juz 7 lancar tanpa kendala',
+        status: 'Selesai'
+    },
+    {
+        id: 'jrn-3',
+        santriId: 's-1',
+        tanggal: '2026-10-16',
+        kegiatan: 'Talaqqi Simakan',
+        surat: "Al-An'am",
+        ayatAwal: 61,
+        ayatAkhir: 120,
+        juz: 7,
+        durasiMenit: 40,
+        tingkatKelancaran: 'Cukup Lancar',
+        catatanAyatSulit: 'Disimak oleh Ahmad Ziyad, perbaiki panjang mad jaiz di ayat 92',
+        status: 'Selesai'
+    }
+];
+
+export const INITIAL_RENCANA_SETORAN: RencanaSetoran[] = [
+    {
+        id: 'rcn-1',
+        santriId: 's-1',
+        tanggalTarget: '2026-10-18',
+        waktu: "Ba'da Subuh",
+        jenis: 'Ziyadah',
+        surat: "Al-A'raf",
+        ayatAwal: 26,
+        ayatAkhir: 50,
+        juz: 8,
+        status: 'Disetujui Musyrif',
+        catatanSantri: 'Sudah diulang 15x lancar insyaAllah siap disetorkan ke Ustadz Abdullah'
+    },
+    {
+        id: 'rcn-2',
+        santriId: 's-1',
+        tanggalTarget: '2026-10-18',
+        waktu: "Ba'da Ashar",
+        jenis: "Muroja'ah",
+        surat: "Al-An'am",
+        ayatAwal: 1,
+        ayatAkhir: 90,
+        juz: 7,
+        status: 'Diajukan',
+        catatanSantri: 'Muroja\'ah 5 lembar awal Juz 7'
     }
 ];
 

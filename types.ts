@@ -20,6 +20,35 @@ export interface JuzProgressRecord {
     catatan?: string;
 }
 
+export interface JurnalBelajarSantri {
+    id: string;
+    santriId: string;
+    tanggal: string;
+    kegiatan: 'Ziyadah Mandiri' | 'Muroja\'ah Mandiri' | 'Talaqqi Simakan' | 'Kajian Tajwid & Makhorij';
+    surat: string;
+    ayatAwal: number;
+    ayatAkhir: number;
+    juz: number;
+    durasiMenit: number;
+    tingkatKelancaran: 'Sangat Lancar' | 'Cukup Lancar' | 'Masih Terbata' | 'Butuh Pendampingan';
+    catatanAyatSulit?: string;
+    status: 'Selesai' | 'Dalam Proses';
+}
+
+export interface RencanaSetoran {
+    id: string;
+    santriId: string;
+    tanggalTarget: string;
+    waktu: 'Ba\'da Subuh' | 'Ba\'da Ashar' | 'Ba\'da Maghrib' | 'Ba\'da Isya';
+    jenis: 'Ziyadah' | 'Muroja\'ah';
+    surat: string;
+    ayatAwal: number;
+    ayatAkhir: number;
+    juz: number;
+    status: 'Diajukan' | 'Disetujui Musyrif' | 'Selesai Disetorkan';
+    catatanSantri?: string;
+}
+
 export interface Santri {
     id: string;
     nis: string;
@@ -31,6 +60,15 @@ export interface Santri {
     suratTerakhir: string;
     status: 'Aktif' | 'Izin' | 'Mutakharij';
     juzProgress?: Record<number, JuzProgressRecord>;
+    targetKhatam?: string;
+    targetHalamanPerHari?: number;
+    lastReadBookmark?: {
+        surat: string;
+        ayat: number;
+        juz: number;
+        tanggal: string;
+    };
+    streakHari?: number;
 }
 
 export interface SetoranRecord {

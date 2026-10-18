@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { User, Santri, SetoranRecord, JuzStatusType, JuzProgressRecord } from '../types';
-import { INITIAL_SANTRI, INITIAL_SETORAN, GOOGLE_SCRIPT_SAMPLE_CODE, QURAN_SURAHS, JUZ_METADATA, createDefaultJuzProgress } from '../mockData';
+import { User, Santri, SetoranRecord, JuzStatusType, JuzProgressRecord, JurnalBelajarSantri, RencanaSetoran } from '../types';
+import { INITIAL_SANTRI, INITIAL_SETORAN, INITIAL_JURNAL_BELAJAR, INITIAL_RENCANA_SETORAN, GOOGLE_SCRIPT_SAMPLE_CODE, QURAN_SURAHS, JUZ_METADATA, createDefaultJuzProgress } from '../mockData';
 import { callAPI } from '../services/apiService';
 import { Button } from './Button';
 
@@ -16,16 +16,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
     const isUstadz = user?.role === 'ustadz';
     const isSantri = user?.role === 'santri';
 
-    const [activeTab, setActiveTab] = useState<'dashboard' | 'santri' | 'setoran' | 'hafalan' | 'pengaturan'>('dashboard');
+    type TabType = 'dashboard' | 'jurnal' | 'rencana' | 'hafalan' | 'setoran' | 'santri' | 'pengaturan';
+    const [activeTab, setActiveTab] = useState<TabType>('dashboard');
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-    // Persisted state in LocalStorage so records are not lost on refresh
+    // Persisted Santri List
     const [santriList, setSantriList] = useState<Santri[]>(() => {
         const saved = localStorage.getItem('darul_kamal_santri_list');
         if (saved) {
             try { 
                 const parsed: Santri[] = JSON.parse(saved);
-                // Ensure juzProgress exists for every santri
                 return parsed.map(s => ({
                     ...s,
                     juzProgress: s.juzProgress || createDefaultJuzProgress(s.totalHafalanJuz || 0)
@@ -37,12 +37,31 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
         return INITIAL_SANTRI;
     });
 
+    // Persisted Official Setoran Records (from Musyrif)
     const [setoranList, setSetoranList] = useState<SetoranRecord[]>(() => {
         const saved = localStorage.getItem('darul_kamal_setoran_list');
         if (saved) {
             try { return JSON.parse(saved); } catch { return INITIAL_SETORAN; }
         }
         return INITIAL_SETORAN;
+    });
+
+    // Persisted Jurnal Belajar Santri (Self-study logs)
+    const [jurnalList, setJurnalList] = useState<JurnalBelajarSantri[]>(() => {
+        const saved = localStorage.getItem('darul_kamal_jurnal_list');
+        if (saved) {
+            try { return JSON.parse(saved); } catch { return INITIAL_JURNAL_BELAJAR; }
+        }
+        return INITIAL_JURNAL_BELAJAR;
+    });
+
+    // Persisted Rencana Setoran (Planned submissions to ustadz)
+    const [rencanaList, setRencanaList] = useState<RencanaSetoran[]>(() => {
+        const saved = localStorage.getItem('darul_kamal_rencana_list');
+        if (saved) {
+            try { return JSON.parse(saved); } catch { return INITIAL_RENCANA_SETORAN; }
+        }
+        return INITIAL_RENCANA_SETORAN;
     });
 
     useEffect(() => {
@@ -53,23 +72,30 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
         localStorage.setItem('darul_kamal_setoran_list', JSON.stringify(setoranList));
     }, [setoranList]);
 
-    // Filters & Search
+    useEffect(() => {
+        localStorage.setItem('darul_kamal_jurnal_list', JSON.stringify(jurnalList));
+    }, [jurnalList]);
+
+    useEffect(() => {
+        localStorage.setItem('darul_kamal_rencana_list', JSON.stringify(rencanaList));
+    }, [rencanaList]);
+
+    // Active Santri Object (for Santri role or selected in Admin view)
+    const currentSantri = isSantri
+        ? santriList.find(s => s.nama.toLowerCase().includes(user?.nama?.toLowerCase() || '')) || santriList[0]
+        : santriList[0];
+
+    const [selectedJuzSantriId, setSelectedJuzSantriId] = useState<string>(currentSantri?.id || 's-1');
+    const activeJuzSantri = santriList.find(s => s.id === selectedJuzSantriId) || currentSantri || santriList[0];
+
+    // Filters
     const [searchQuery, setSearchQuery] = useState('');
     const [filterJenis, setFilterJenis] = useState<'Semua' | 'Ziyadah' | "Muroja'ah">('Semua');
     const [filterSantriId, setFilterSantriId] = useState<string>('Semua');
 
-    // Modul 30 Juz Active States
-    const [selectedJuzSantriId, setSelectedJuzSantriId] = useState<string>(() => {
-        if (isSantri) {
-            const found = santriList.find(s => s.nama.toLowerCase().includes(user?.nama?.toLowerCase() || ''));
-            return found ? found.id : santriList[0]?.id || 's-1';
-        }
-        return santriList[0]?.id || 's-1';
-    });
+    // 30 Juz Module States
     const [juzFilterStatus, setJuzFilterStatus] = useState<'Semua' | JuzStatusType>('Semua');
     const [juzViewMode, setJuzViewMode] = useState<'grid' | 'table'>('grid');
-    
-    // Modal Detail & Evaluasi Juz
     const [activeJuzModal, setActiveJuzModal] = useState<number | null>(null);
     const [modalJuzStatus, setModalJuzStatus] = useState<JuzStatusType>('Mutqin');
     const [modalJuzNilai, setModalJuzNilai] = useState<string>('A (Mumtaz)');
@@ -77,7 +103,29 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
     const [modalJuzPenguji, setModalJuzPenguji] = useState<string>(user?.nama || 'Ustadz Abdullah');
     const [modalJuzCatatan, setModalJuzCatatan] = useState<string>('');
 
-    // Modal Input Setoran Baru
+    // Modal Input Jurnal Belajar Santri (Self-Study Log)
+    const [isAddJurnalOpen, setIsAddJurnalOpen] = useState(false);
+    const [jurnalKegiatan, setJurnalKegiatan] = useState<'Ziyadah Mandiri' | "Muroja'ah Mandiri" | 'Talaqqi Simakan' | 'Kajian Tajwid & Makhorij'>('Ziyadah Mandiri');
+    const [jurnalSurahNomor, setJurnalSurahNomor] = useState<number>(7);
+    const [jurnalAyatAwal, setJurnalAyatAwal] = useState('46');
+    const [jurnalAyatAkhir, setJurnalAyatAkhir] = useState('60');
+    const [jurnalJuz, setJurnalJuz] = useState('8');
+    const [jurnalDurasi, setJurnalDurasi] = useState('40');
+    const [jurnalKelancaran, setJurnalKelancaran] = useState<'Sangat Lancar' | 'Cukup Lancar' | 'Masih Terbata' | 'Butuh Pendampingan'>('Sangat Lancar');
+    const [jurnalCatatanSulit, setJurnalCatatanSulit] = useState('');
+
+    // Modal Input Rencana Setoran (Plan submission)
+    const [isAddRencanaOpen, setIsAddRencanaOpen] = useState(false);
+    const [rencanaTanggal, setRencanaTanggal] = useState<string>(new Date().toISOString().split('T')[0]);
+    const [rencanaWaktu, setRencanaWaktu] = useState<'Ba\'da Subuh' | 'Ba\'da Ashar' | 'Ba\'da Maghrib' | 'Ba\'da Isya'>('Ba\'da Subuh');
+    const [rencanaJenis, setRencanaJenis] = useState<'Ziyadah' | "Muroja'ah">('Ziyadah');
+    const [rencanaSurahNomor, setRencanaSurahNomor] = useState<number>(7);
+    const [rencanaAyatAwal, setRencanaAyatAwal] = useState('46');
+    const [rencanaAyatAkhir, setRencanaAyatAkhir] = useState('65');
+    const [rencanaJuz, setRencanaJuz] = useState('8');
+    const [rencanaCatatan, setRencanaCatatan] = useState('');
+
+    // Modal Input Setoran Baru (Official Musyrif Input)
     const [isAddSetoranOpen, setIsAddSetoranOpen] = useState(false);
     const [selectedSantriId, setSelectedSantriId] = useState(santriList[0]?.id || 's-1');
     const [formJenis, setFormJenis] = useState<'Ziyadah' | "Muroja'ah">('Ziyadah');
@@ -88,7 +136,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
     const [formNilai, setFormNilai] = useState<'A (Mumtaz)' | 'B (Jayyid Jiddan)' | 'C (Jayyid)' | 'D (Maqbul)'>('A (Mumtaz)');
     const [formCatatan, setFormCatatan] = useState('');
 
-    // Modal Tambah Santri Baru
+    // Modal Tambah Santri Baru (Admin)
     const [isAddSantriOpen, setIsAddSantriOpen] = useState(false);
     const [newNis, setNewNis] = useState('');
     const [newNama, setNewNama] = useState('');
@@ -97,37 +145,133 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
     const [newMusyrif, setNewMusyrif] = useState(user?.nama || 'Ustadz Abdullah');
     const [newTotalJuz, setNewTotalJuz] = useState('0');
 
-    // Backend URL settings inside dashboard
+    // Modal Bookmark Update
+    const [isBookmarkModalOpen, setIsBookmarkModalOpen] = useState(false);
+    const [bmSurahNomor, setBmSurahNomor] = useState<number>(7);
+    const [bmAyat, setBmAyat] = useState('50');
+
+    // Backend URL settings
     const [inputUrl, setInputUrl] = useState(apiUrl);
     const [urlSavedMessage, setUrlSavedMessage] = useState('');
     const [testConnectionStatus, setTestConnectionStatus] = useState<{ loading: boolean; success?: boolean; message?: string } | null>(null);
 
-    // Active santri for 30 Juz module
-    const currentJuzSantri = santriList.find(s => s.id === selectedJuzSantriId) || santriList[0];
-    const juzProgressMap = currentJuzSantri?.juzProgress || createDefaultJuzProgress(currentJuzSantri?.totalHafalanJuz || 0);
-
-    // Count statistics for the selected santri in 30 Juz module
-    const totalMutqin = Object.values(juzProgressMap).filter(j => j.status === 'Mutqin').length;
-    const totalSedangBerjalan = Object.values(juzProgressMap).filter(j => j.status === 'Sedang Berjalan').length;
-    const totalPerluMurojaah = Object.values(juzProgressMap).filter(j => j.status === "Perlu Muroja'ah").length;
+    // Current santri 30 Juz progress
+    const activeJuzProgressMap = activeJuzSantri?.juzProgress || createDefaultJuzProgress(activeJuzSantri?.totalHafalanJuz || 0);
+    const totalMutqin = Object.values(activeJuzProgressMap).filter(j => j.status === 'Mutqin').length;
+    const totalSedangBerjalan = Object.values(activeJuzProgressMap).filter(j => j.status === 'Sedang Berjalan').length;
+    const totalPerluMurojaah = Object.values(activeJuzProgressMap).filter(j => j.status === "Perlu Muroja'ah").length;
     const totalBelum = 30 - totalMutqin - totalSedangBerjalan - totalPerluMurojaah;
     const percentageComplete = Math.round((totalMutqin / 30) * 100);
 
-    // Open Juz detail modal
+    // Calculate learning stats for Santri
+    const santriJurnals = jurnalList.filter(j => j.santriId === currentSantri?.id);
+    const totalMenitBelajar = santriJurnals.reduce((sum, j) => sum + (j.durasiMenit || 0), 0);
+    const totalSesiBelajar = santriJurnals.length;
+
+    // Santri submissions
+    const santriRencana = rencanaList.filter(r => isSantri ? r.santriId === currentSantri?.id : true);
+
+    // Handlers
+    const handleSaveJurnal = (e: React.FormEvent) => {
+        e.preventDefault();
+        const surahObj = QURAN_SURAHS.find(s => s.nomor === jurnalSurahNomor) || QURAN_SURAHS[0];
+        const newJurnal: JurnalBelajarSantri = {
+            id: `jrn-${Date.now()}`,
+            santriId: currentSantri.id,
+            tanggal: new Date().toISOString().split('T')[0],
+            kegiatan: jurnalKegiatan,
+            surat: surahObj.nama,
+            ayatAwal: parseInt(jurnalAyatAwal) || 1,
+            ayatAkhir: parseInt(jurnalAyatAkhir) || surahObj.ayat,
+            juz: parseInt(jurnalJuz) || surahObj.juz,
+            durasiMenit: parseInt(jurnalDurasi) || 30,
+            tingkatKelancaran: jurnalKelancaran,
+            catatanAyatSulit: jurnalCatatanSulit.trim() || 'Alhamdulillah lancar dan dipahami',
+            status: 'Selesai'
+        };
+
+        setJurnalList([newJurnal, ...jurnalList]);
+
+        // Update streak & bookmark
+        setSantriList(santriList.map(s => {
+            if (s.id === currentSantri.id) {
+                return {
+                    ...s,
+                    streakHari: (s.streakHari || 14) + 1,
+                    lastReadBookmark: {
+                        surat: surahObj.nama,
+                        ayat: parseInt(jurnalAyatAkhir) || surahObj.ayat,
+                        juz: parseInt(jurnalJuz) || surahObj.juz,
+                        tanggal: new Date().toISOString().split('T')[0]
+                    }
+                };
+            }
+            return s;
+        }));
+
+        setIsAddJurnalOpen(false);
+        setJurnalCatatanSulit('');
+    };
+
+    const handleSaveRencana = (e: React.FormEvent) => {
+        e.preventDefault();
+        const surahObj = QURAN_SURAHS.find(s => s.nomor === rencanaSurahNomor) || QURAN_SURAHS[0];
+        const newRencana: RencanaSetoran = {
+            id: `rcn-${Date.now()}`,
+            santriId: currentSantri.id,
+            tanggalTarget: rencanaTanggal,
+            waktu: rencanaWaktu,
+            jenis: rencanaJenis,
+            surat: surahObj.nama,
+            ayatAwal: parseInt(rencanaAyatAwal) || 1,
+            ayatAkhir: parseInt(rencanaAyatAkhir) || 20,
+            juz: parseInt(rencanaJuz) || surahObj.juz,
+            status: 'Diajukan',
+            catatanSantri: rencanaCatatan.trim() || 'InsyaAllah sudah dimuroja\'ah mandiri'
+        };
+
+        setRencanaList([newRencana, ...rencanaList]);
+        setIsAddRencanaOpen(false);
+        setRencanaCatatan('');
+    };
+
+    const handleApproveRencana = (id: string, newStatus: 'Disetujui Musyrif' | 'Selesai Disetorkan') => {
+        setRencanaList(rencanaList.map(r => r.id === id ? { ...r, status: newStatus } : r));
+    };
+
+    const handleSaveBookmark = (e: React.FormEvent) => {
+        e.preventDefault();
+        const surahObj = QURAN_SURAHS.find(s => s.nomor === bmSurahNomor) || QURAN_SURAHS[0];
+        setSantriList(santriList.map(s => {
+            if (s.id === currentSantri.id) {
+                return {
+                    ...s,
+                    lastReadBookmark: {
+                        surat: surahObj.nama,
+                        ayat: parseInt(bmAyat) || 1,
+                        juz: surahObj.juz,
+                        tanggal: new Date().toISOString().split('T')[0]
+                    }
+                };
+            }
+            return s;
+        }));
+        setIsBookmarkModalOpen(false);
+    };
+
     const handleOpenJuzModal = (juzNum: number) => {
-        const existing = juzProgressMap[juzNum];
+        const existing = activeJuzProgressMap[juzNum];
         setActiveJuzModal(juzNum);
-        setModalJuzStatus(existing?.status || (juzNum <= currentJuzSantri.totalHafalanJuz ? 'Mutqin' : 'Belum'));
+        setModalJuzStatus(existing?.status || (juzNum <= activeJuzSantri.totalHafalanJuz ? 'Mutqin' : 'Belum'));
         setModalJuzNilai(existing?.nilaiTasmi || 'A (Mumtaz)');
         setModalJuzTanggal(existing?.tanggalUjian || new Date().toISOString().split('T')[0]);
         setModalJuzPenguji(existing?.penguji || user?.nama || 'Ustadz Pembina');
         setModalJuzCatatan(existing?.catatan || '');
     };
 
-    // Save Juz evaluation and update santri
     const handleSaveJuzProgress = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!activeJuzModal || !currentJuzSantri) return;
+        if (!activeJuzModal || !activeJuzSantri) return;
 
         const updatedRecord: JuzProgressRecord = {
             juz: activeJuzModal,
@@ -139,15 +283,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
         };
 
         const updatedProgressMap = {
-            ...juzProgressMap,
+            ...activeJuzProgressMap,
             [activeJuzModal]: updatedRecord
         };
 
-        // Recalculate total completed juz
         const newTotalCompleted = Object.values(updatedProgressMap).filter(r => r.status === 'Mutqin').length;
 
         const updatedSantriList = santriList.map(s => {
-            if (s.id === currentJuzSantri.id) {
+            if (s.id === activeJuzSantri.id) {
                 return {
                     ...s,
                     totalHafalanJuz: newTotalCompleted,
@@ -161,7 +304,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
         setActiveJuzModal(null);
     };
 
-    // Auto-update Juz and verse limit when surah changes
     const handleSurahChange = (nomor: number) => {
         setSelectedSurahNomor(nomor);
         const surah = QURAN_SURAHS.find(s => s.nomor === nomor);
@@ -172,7 +314,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
         }
     };
 
-    // Handle adding new setoran
     const handleSaveSetoran = (e: React.FormEvent) => {
         e.preventDefault();
         const targetSantri = santriList.find(s => s.id === selectedSantriId) || santriList[0];
@@ -193,10 +334,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
             catatan: formCatatan.trim() || 'Alhamdulillah lancar dan tartil'
         };
 
-        const updatedSetoran = [newRecord, ...setoranList];
-        setSetoranList(updatedSetoran);
+        setSetoranList([newRecord, ...setoranList]);
 
-        // Update target santri's last surah and total juz if ziyadah increases
         setSantriList(santriList.map(s => {
             if (s.id === targetSantri.id) {
                 const calculatedJuz = Math.max(s.totalHafalanJuz, formJenis === 'Ziyadah' ? parseInt(formJuz) || s.totalHafalanJuz : s.totalHafalanJuz);
@@ -213,7 +352,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
         setFormCatatan('');
     };
 
-    // Handle adding new santri
     const handleSaveSantri = (e: React.FormEvent) => {
         e.preventDefault();
         if (!newNama.trim() || !newNis.trim()) return;
@@ -229,7 +367,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
             totalHafalanJuz: totalJuzInt,
             suratTerakhir: 'Memulai juz awal',
             status: 'Aktif',
-            juzProgress: createDefaultJuzProgress(totalJuzInt)
+            juzProgress: createDefaultJuzProgress(totalJuzInt),
+            streakHari: 1,
+            targetKhatam: 'Ramadhan 1448 H',
+            targetHalamanPerHari: 1
         };
 
         setSantriList([...santriList, newSantri]);
@@ -238,7 +379,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
         setNewNama('');
     };
 
-    // Test Google Apps Script connection
     const handleTestBackend = async () => {
         if (!inputUrl.trim() || !inputUrl.startsWith('https://script.google.com')) {
             setTestConnectionStatus({
@@ -268,7 +408,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
         }
     };
 
-    // Export CSV of setoran
     const exportCSV = () => {
         const headers = ["ID", "Santri", "Tanggal", "Jenis", "Surat", "Ayat Awal", "Ayat Akhir", "Juz", "Nilai", "Musyrif", "Catatan"];
         const rows = setoranList.map(item => [
@@ -295,29 +434,26 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
         document.body.removeChild(link);
     };
 
-    // Filter santri
+    // Filtered lists
     const filteredSantri = santriList.filter(s => 
         s.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
         s.nis.includes(searchQuery) ||
         s.halaqah.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    // Filter setoran
     const filteredSetoran = setoranList.filter(item => {
         const matchesJenis = filterJenis === 'Semua' || item.jenis === filterJenis;
         const matchesSantri = filterSantriId === 'Semua' || item.santriId === filterSantriId;
         if (isSantri) {
-            return matchesJenis && (item.santriNama.toLowerCase().includes(user?.nama?.toLowerCase() || '') || item.santriId === 's-1');
+            return matchesJenis && (item.santriNama.toLowerCase().includes(user?.nama?.toLowerCase() || '') || item.santriId === currentSantri?.id);
         }
         return matchesJenis && matchesSantri;
     });
 
-    // Recent setoran for active modal juz
-    const modalJuzSetoran = activeJuzModal 
-        ? setoranList.filter(s => s.juz === activeJuzModal && s.santriId === currentJuzSantri?.id)
-        : [];
-
     const activeMeta = activeJuzModal ? JUZ_METADATA.find(m => m.juz === activeJuzModal) : null;
+    const modalJuzSetoran = activeJuzModal 
+        ? setoranList.filter(s => s.juz === activeJuzModal && s.santriId === activeJuzSantri?.id)
+        : [];
 
     return (
         <div className="flex flex-col md:flex-row h-screen bg-gray-50 overflow-hidden font-sans">
@@ -335,7 +471,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                             isUstadz ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' :
                             'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                         }`}>
-                            {isAdmin ? 'Administrator' : isUstadz ? 'Ustadz / Musyrif' : 'Santri'}
+                            {isAdmin ? 'Administrator' : isUstadz ? 'Ustadz / Musyrif' : 'Santri Tahfidz'}
                         </span>
                     </div>
                 </div>
@@ -349,6 +485,39 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                     >
                         <i className="fas fa-home w-5 text-center"></i>
                         <span>Dashboard</span>
+                    </button>
+
+                    {/* Santri Focused Nav Items */}
+                    <button 
+                        onClick={() => setActiveTab('jurnal')}
+                        className={`w-full text-left px-4 py-3 rounded-xl font-medium transition flex items-center gap-3 text-sm ${
+                            activeTab === 'jurnal' ? 'bg-emerald-800 text-white shadow-md' : 'text-emerald-100 hover:bg-emerald-800/50'
+                        }`}
+                    >
+                        <i className="fas fa-edit w-5 text-center text-amber-300"></i>
+                        <span>Jurnal Belajar Mandiri</span>
+                        <span className="ml-auto text-xs bg-emerald-700 px-2 py-0.5 rounded-full">{santriJurnals.length}</span>
+                    </button>
+
+                    <button 
+                        onClick={() => setActiveTab('rencana')}
+                        className={`w-full text-left px-4 py-3 rounded-xl font-medium transition flex items-center gap-3 text-sm ${
+                            activeTab === 'rencana' ? 'bg-emerald-800 text-white shadow-md' : 'text-emerald-100 hover:bg-emerald-800/50'
+                        }`}
+                    >
+                        <i className="fas fa-calendar-check w-5 text-center text-teal-300"></i>
+                        <span>Rencana Setoran</span>
+                        <span className="ml-auto text-xs bg-emerald-700 px-2 py-0.5 rounded-full">{santriRencana.length}</span>
+                    </button>
+
+                    <button 
+                        onClick={() => setActiveTab('hafalan')}
+                        className={`w-full text-left px-4 py-3 rounded-xl font-medium transition flex items-center gap-3 text-sm ${
+                            activeTab === 'hafalan' ? 'bg-emerald-800 text-white shadow-md' : 'text-emerald-100 hover:bg-emerald-800/50'
+                        }`}
+                    >
+                        <i className="fas fa-book-quran w-5 text-center text-amber-200"></i>
+                        <span>Peta Progres 30 Juz</span>
                     </button>
 
                     {(isAdmin || isUstadz) && (
@@ -371,19 +540,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                         }`}
                     >
                         <i className="fas fa-book-reader w-5 text-center"></i>
-                        <span>Catatan Setoran</span>
-                        <span className="ml-auto text-xs bg-emerald-700 px-2 py-0.5 rounded-full">{setoranList.length}</span>
-                    </button>
-
-                    <button 
-                        onClick={() => setActiveTab('hafalan')}
-                        className={`w-full text-left px-4 py-3 rounded-xl font-medium transition flex items-center gap-3 text-sm ${
-                            activeTab === 'hafalan' ? 'bg-emerald-800 text-white shadow-md' : 'text-emerald-100 hover:bg-emerald-800/50'
-                        }`}
-                    >
-                        <i className="fas fa-book-quran w-5 text-center text-amber-300"></i>
-                        <span className="font-semibold text-amber-200">Modul 30 Juz</span>
-                        <span className="ml-auto text-[10px] bg-amber-500/30 text-amber-200 px-1.5 py-0.5 rounded border border-amber-400/30">Aktif</span>
+                        <span>Catatan Nilai Setoran</span>
                     </button>
 
                     <button 
@@ -428,7 +585,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                 </div>
                 <div className="flex items-center gap-2">
                     <span className="text-xs bg-emerald-800 px-2.5 py-1 rounded-full text-emerald-200 font-semibold truncate max-w-[120px]">
-                        {user?.nama?.split(' ')[0] || 'User'}
+                        {user?.nama?.split(' ')[0] || 'Santri'}
                     </span>
                     <button 
                         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -441,43 +598,31 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
 
             {/* Mobile Dropdown Menu */}
             {mobileMenuOpen && (
-                <div className="md:hidden bg-emerald-950 text-white px-4 py-3 space-y-2 border-b border-emerald-800 z-30">
-                    <button 
-                        onClick={() => { setActiveTab('dashboard'); setMobileMenuOpen(false); }}
-                        className="w-full text-left py-2 px-3 rounded hover:bg-emerald-900 text-sm flex items-center gap-2"
-                    >
+                <div className="md:hidden bg-emerald-950 text-white px-4 py-3 space-y-2 border-b border-emerald-800 z-30 text-xs">
+                    <button onClick={() => { setActiveTab('dashboard'); setMobileMenuOpen(false); }} className="w-full text-left py-2 px-3 rounded hover:bg-emerald-900 flex items-center gap-2">
                         <i className="fas fa-home w-5"></i> Dashboard
                     </button>
+                    <button onClick={() => { setActiveTab('jurnal'); setMobileMenuOpen(false); }} className="w-full text-left py-2 px-3 rounded hover:bg-emerald-900 flex items-center gap-2 text-amber-300">
+                        <i className="fas fa-edit w-5"></i> Jurnal Belajar Mandiri
+                    </button>
+                    <button onClick={() => { setActiveTab('rencana'); setMobileMenuOpen(false); }} className="w-full text-left py-2 px-3 rounded hover:bg-emerald-900 flex items-center gap-2 text-teal-300">
+                        <i className="fas fa-calendar-check w-5"></i> Rencana Setoran
+                    </button>
+                    <button onClick={() => { setActiveTab('hafalan'); setMobileMenuOpen(false); }} className="w-full text-left py-2 px-3 rounded hover:bg-emerald-900 flex items-center gap-2 text-amber-200">
+                        <i className="fas fa-book-quran w-5"></i> Modul 30 Juz
+                    </button>
                     {(isAdmin || isUstadz) && (
-                        <button 
-                            onClick={() => { setActiveTab('santri'); setMobileMenuOpen(false); }}
-                            className="w-full text-left py-2 px-3 rounded hover:bg-emerald-900 text-sm flex items-center gap-2"
-                        >
+                        <button onClick={() => { setActiveTab('santri'); setMobileMenuOpen(false); }} className="w-full text-left py-2 px-3 rounded hover:bg-emerald-900 flex items-center gap-2">
                             <i className="fas fa-users w-5"></i> Data Santri
                         </button>
                     )}
-                    <button 
-                        onClick={() => { setActiveTab('setoran'); setMobileMenuOpen(false); }}
-                        className="w-full text-left py-2 px-3 rounded hover:bg-emerald-900 text-sm flex items-center gap-2"
-                    >
-                        <i className="fas fa-book-reader w-5"></i> Catatan Setoran
+                    <button onClick={() => { setActiveTab('setoran'); setMobileMenuOpen(false); }} className="w-full text-left py-2 px-3 rounded hover:bg-emerald-900 flex items-center gap-2">
+                        <i className="fas fa-book-reader w-5"></i> Nilai Setoran
                     </button>
-                    <button 
-                        onClick={() => { setActiveTab('hafalan'); setMobileMenuOpen(false); }}
-                        className="w-full text-left py-2 px-3 rounded bg-emerald-900/80 text-amber-300 text-sm font-semibold flex items-center gap-2"
-                    >
-                        <i className="fas fa-book-quran w-5"></i> Modul 30 Juz
+                    <button onClick={() => { setActiveTab('pengaturan'); setMobileMenuOpen(false); }} className="w-full text-left py-2 px-3 rounded hover:bg-emerald-900 flex items-center gap-2">
+                        <i className="fas fa-cog w-5"></i> Pengaturan
                     </button>
-                    <button 
-                        onClick={() => { setActiveTab('pengaturan'); setMobileMenuOpen(false); }}
-                        className="w-full text-left py-2 px-3 rounded hover:bg-emerald-900 text-sm flex items-center gap-2"
-                    >
-                        <i className="fas fa-cog w-5"></i> Pengaturan &amp; API
-                    </button>
-                    <button 
-                        onClick={onLogout}
-                        className="w-full text-left py-2 px-3 rounded bg-red-600/80 text-white text-sm font-semibold flex items-center gap-2 mt-2"
-                    >
+                    <button onClick={onLogout} className="w-full text-left py-2 px-3 rounded bg-red-600/80 text-white font-semibold flex items-center gap-2 mt-2">
                         <i className="fas fa-sign-out-alt w-5"></i> Keluar
                     </button>
                 </div>
@@ -485,31 +630,44 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
 
             {/* Main Content Area */}
             <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
-                {/* Top Bar inside content */}
+                {/* Top Action Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                     <div>
                         <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                            {activeTab === 'dashboard' && 'Beranda E-Tahfidz'}
+                            {activeTab === 'dashboard' && (isSantri ? 'Ruang Santri & Mutaba\'ah Hafalan' : 'Beranda E-Tahfidz')}
+                            {activeTab === 'jurnal' && 'Jurnal Belajar & Muroja\'ah Mandiri'}
+                            {activeTab === 'rencana' && 'Rencana & Jadwal Setoran ke Musyrif'}
+                            {activeTab === 'hafalan' && 'Peta Progres 30 Juz Al-Qur\'an'}
                             {activeTab === 'santri' && 'Data Santri & Halaqah'}
-                            {activeTab === 'setoran' && 'Catatan Setoran Hafalan'}
-                            {activeTab === 'hafalan' && 'Modul Evaluasi & Progres 30 Juz'}
+                            {activeTab === 'setoran' && 'Catatan Setoran & Evaluasi Nilai'}
                             {activeTab === 'pengaturan' && 'Pengaturan & Integrasi Backend'}
                         </h2>
                         <p className="text-xs text-gray-500 mt-0.5">
-                            Pondok Pesantren Darul Kamal • Tahun Ajaran 1447 / 1448 H
+                            Pondok Pesantren Darul Kamal • Lembaga Tahfidzul Qur'an
                         </p>
                     </div>
 
                     <div className="flex items-center gap-2 flex-wrap">
-                        {activeTab === 'hafalan' && (
-                            <button
-                                onClick={() => window.print()}
-                                className="bg-emerald-800 hover:bg-emerald-900 text-white px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition"
-                            >
-                                <i className="fas fa-print"></i>
-                                <span>Cetak Lembar Pantau 30 Juz</span>
-                            </button>
+                        {/* Quick action buttons for Santri */}
+                        {isSantri && (
+                            <>
+                                <button
+                                    onClick={() => setIsAddJurnalOpen(true)}
+                                    className="bg-emerald-700 hover:bg-emerald-800 text-white px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition"
+                                >
+                                    <i className="fas fa-pen-nib"></i>
+                                    <span>Catat Belajar Hari Ini</span>
+                                </button>
+                                <button
+                                    onClick={() => setIsAddRencanaOpen(true)}
+                                    className="bg-teal-700 hover:bg-teal-800 text-white px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition"
+                                >
+                                    <i className="fas fa-plus"></i>
+                                    <span>Ajukan Jadwal Setoran</span>
+                                </button>
+                            </>
                         )}
+
                         {(isAdmin || isUstadz) && activeTab === 'santri' && (
                             <button
                                 onClick={() => setIsAddSantriOpen(true)}
@@ -519,45 +677,50 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                                 <span>Tambah Santri</span>
                             </button>
                         )}
+
                         {(isAdmin || isUstadz) && (
                             <button
                                 onClick={() => setIsAddSetoranOpen(true)}
                                 className="bg-emerald-700 hover:bg-emerald-800 text-white px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition"
                             >
                                 <i className="fas fa-plus"></i>
-                                <span>Input Setoran</span>
+                                <span>Input Setoran Resmi</span>
                             </button>
                         )}
-                        {activeTab === 'setoran' && (
+
+                        {activeTab === 'hafalan' && (
                             <button
-                                onClick={exportCSV}
-                                className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition"
+                                onClick={() => window.print()}
+                                className="bg-emerald-800 hover:bg-emerald-900 text-white px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition"
                             >
-                                <i className="fas fa-file-csv text-emerald-600"></i>
-                                <span>Ekspor CSV</span>
+                                <i className="fas fa-print"></i>
+                                <span>Cetak Lembar Pantau</span>
                             </button>
                         )}
                     </div>
                 </div>
 
-                {/* TAB: DASHBOARD */}
+                {/* TAB 1: DASHBOARD (Santri-focused & General) */}
                 {activeTab === 'dashboard' && (
                     <div className="space-y-6">
-                        {/* Welcome Banner */}
-                        <div className="bg-gradient-to-r from-emerald-800 to-teal-900 rounded-2xl p-6 text-white shadow-md relative overflow-hidden">
+                        {/* Santri Personal Hero Banner */}
+                        <div className="bg-gradient-to-r from-emerald-800 via-emerald-850 to-teal-900 rounded-2xl p-6 text-white shadow-md relative overflow-hidden">
                             <div className="relative z-10">
-                                <div className="inline-block bg-white/20 backdrop-blur-xs px-3 py-1 rounded-full text-xs font-semibold mb-3">
-                                    {isAdmin ? '👑 Mode Administrator' : isUstadz ? '📖 Pengampu Halaqah' : '🌟 Santri Tahfidz'}
+                                <div className="flex flex-wrap items-center gap-2 mb-3">
+                                    <span className="bg-white/20 backdrop-blur-xs px-3 py-1 rounded-full text-xs font-semibold">
+                                        🌟 {currentSantri?.halaqah || 'Halaqah Tahfidz'}
+                                    </span>
+                                    <span className="bg-amber-400/30 text-amber-200 border border-amber-300/30 px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
+                                        <i className="fas fa-fire text-amber-300"></i> {currentSantri?.streakHari || 14} Hari Istiqomah Belajar
+                                    </span>
                                 </div>
                                 <h3 className="text-xl sm:text-2xl font-bold">
-                                    Assalamu'alaikum, {user?.nama || 'Pengguna'}!
+                                    Ahlan wa Sahlan, {user?.nama || 'Ahmad Fauzan'}!
                                 </h3>
                                 <p className="text-emerald-100 text-xs sm:text-sm mt-1 max-w-xl leading-relaxed">
-                                    {isAdmin 
-                                        ? 'Selamat datang di panel kendali E-Tahfidz. Anda dapat memantau santri, mengelola setoran, dan mengekspor laporan.'
-                                        : isUstadz
-                                        ? 'Semoga hari ini penuh berkah dalam membimbing para penghafal Al-Qur\'an di Pondok Pesantren Darul Kamal.'
-                                        : 'Terus istiqomah menambah ziyadah hafalan dan menjaga muroja\'ah setiap hari. Al-Qur\'an adalah syafaat di hari kiamat.'}
+                                    {isSantri 
+                                        ? `Saat ini Anda telah menyelesaikan ${currentSantri?.totalHafalanJuz || 7} Juz Mutqin. Tetap semangat menambah hafalan dan muroja'ah setiap selesai shalat.`
+                                        : 'Panel pemantauan dan bimbingan tahfidz santri Pondok Pesantren Darul Kamal.'}
                                 </p>
                             </div>
                             <div className="absolute right-4 -bottom-6 text-white/10 font-arab text-9xl pointer-events-none select-none">
@@ -565,340 +728,281 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                             </div>
                         </div>
 
-                        {/* Quick Stats Grid */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs hover:shadow-md transition">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-gray-500 text-xs font-bold uppercase tracking-wider">Total Santri</span>
-                                    <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-                                        <i className="fas fa-users text-lg"></i>
+                        {/* Interactive Widget: Penanda Terakhir Baca (Bookmark) & Target Santri */}
+                        {isSantri && (
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {/* Bookmark Card */}
+                                <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 p-5 rounded-2xl shadow-xs flex flex-col justify-between">
+                                    <div>
+                                        <div className="flex justify-between items-center mb-2">
+                                            <span className="text-amber-900 font-bold text-xs uppercase flex items-center gap-1.5">
+                                                <i className="fas fa-bookmark text-amber-600"></i> Penanda Terakhir Dihafal
+                                            </span>
+                                            <button 
+                                                onClick={() => setIsBookmarkModalOpen(true)}
+                                                className="text-amber-700 hover:text-amber-900 text-xs font-bold underline"
+                                            >
+                                                Ubah
+                                            </button>
+                                        </div>
+                                        <div className="text-xl font-bold text-gray-900 mt-1">
+                                            Surat {currentSantri?.lastReadBookmark?.surat || "Al-A'raf"}
+                                        </div>
+                                        <p className="text-xs text-amber-900 font-semibold mt-0.5">
+                                            Ayat {currentSantri?.lastReadBookmark?.ayat || 45} • Juz {currentSantri?.lastReadBookmark?.juz || 8}
+                                        </p>
+                                        <p className="text-[11px] text-gray-500 mt-1">
+                                            Diperbarui: {currentSantri?.lastReadBookmark?.tanggal || 'Hari ini'}
+                                        </p>
                                     </div>
+                                    <button
+                                        onClick={() => setIsAddJurnalOpen(true)}
+                                        className="mt-4 w-full bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold py-2 rounded-xl transition flex items-center justify-center gap-1.5 shadow-xs"
+                                    >
+                                        <i className="fas fa-arrow-right"></i> Lanjutkan Hafalan Ini
+                                    </button>
                                 </div>
-                                <div className="text-2xl font-bold text-gray-800 mt-2">{santriList.length} Santri</div>
-                                <p className="text-[11px] text-green-600 font-medium mt-1">
-                                    <i className="fas fa-check-circle mr-1"></i>100% Status Aktif
-                                </p>
-                            </div>
 
-                            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs hover:shadow-md transition">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-gray-500 text-xs font-bold uppercase tracking-wider">Total Setoran</span>
-                                    <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                                        <i className="fas fa-book-open text-lg"></i>
+                                {/* Target & Estimasi Khatam */}
+                                <div className="bg-white border border-gray-200 p-5 rounded-2xl shadow-xs flex flex-col justify-between">
+                                    <div>
+                                        <span className="text-gray-500 font-bold text-xs uppercase tracking-wider">
+                                            Target Khatam 30 Juz
+                                        </span>
+                                        <div className="text-xl font-bold text-emerald-800 mt-1">
+                                            {currentSantri?.targetKhatam || 'Ramadhan 1448 H'}
+                                        </div>
+                                        <div className="mt-2 space-y-1 text-xs text-gray-600">
+                                            <div className="flex justify-between">
+                                                <span>Target harian:</span>
+                                                <span className="font-bold text-gray-800">{currentSantri?.targetHalamanPerHari || 1} Halaman/hari</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span>Sisa yang harus dihafal:</span>
+                                                <span className="font-bold text-amber-600">{30 - (currentSantri?.totalHafalanJuz || 7)} Juz</span>
+                                            </div>
+                                        </div>
                                     </div>
+                                    <button
+                                        onClick={() => setActiveTab('hafalan')}
+                                        className="mt-4 w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold py-2 rounded-xl transition border border-emerald-200 text-center"
+                                    >
+                                        Buka Peta 30 Juz Anda
+                                    </button>
                                 </div>
-                                <div className="text-2xl font-bold text-gray-800 mt-2">{setoranList.length} Catatan</div>
-                                <p className="text-[11px] text-emerald-600 font-medium mt-1">
-                                    <i className="fas fa-history mr-1"></i>Ziyadah &amp; Muroja'ah
-                                </p>
-                            </div>
 
-                            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs hover:shadow-md transition">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-gray-500 text-xs font-bold uppercase tracking-wider">
-                                        {isSantri ? 'Hafalan Anda' : 'Rata-rata Hafalan'}
-                                    </span>
-                                    <div className="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
-                                        <i className="fas fa-medal text-lg"></i>
+                                {/* Belajar Mandiri Stats */}
+                                <div className="bg-white border border-gray-200 p-5 rounded-2xl shadow-xs flex flex-col justify-between">
+                                    <div>
+                                        <span className="text-gray-500 font-bold text-xs uppercase tracking-wider">
+                                            Aktivitas Belajar Mandiri
+                                        </span>
+                                        <div className="text-2xl font-bold text-gray-900 mt-1">
+                                            {totalMenitBelajar} <span className="text-xs font-normal text-gray-500">Menit Tercatat</span>
+                                        </div>
+                                        <p className="text-xs text-emerald-700 font-medium mt-1">
+                                            <i className="fas fa-check-circle mr-1"></i> {totalSesiBelajar} Sesi Ziyadah &amp; Muroja'ah
+                                        </p>
                                     </div>
+                                    <button
+                                        onClick={() => setActiveTab('jurnal')}
+                                        className="mt-4 w-full bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold py-2 rounded-xl transition shadow-xs text-center"
+                                    >
+                                        Buka Catatan Jurnal Belajar
+                                    </button>
                                 </div>
-                                <div className="text-2xl font-bold text-gray-800 mt-2">
-                                    {isSantri 
-                                        ? `${currentJuzSantri?.totalHafalanJuz || user?.totalJuz || 7} Juz` 
-                                        : `${(santriList.reduce((acc, s) => acc + s.totalHafalanJuz, 0) / (santriList.length || 1)).toFixed(1)} Juz`}
-                                </div>
-                                <p className="text-[11px] text-amber-700 font-medium mt-1">
-                                    <i className="fas fa-star mr-1"></i>Target Minimal: 30 Juz
-                                </p>
                             </div>
+                        )}
 
-                            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-xs hover:shadow-md transition">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-gray-500 text-xs font-bold uppercase tracking-wider">Status Backend</span>
-                                    <div className="w-10 h-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
-                                        <i className="fas fa-server text-lg"></i>
-                                    </div>
-                                </div>
-                                <div className="text-base font-bold text-gray-800 mt-2 truncate">
-                                    {apiUrl && apiUrl.startsWith('https://script.google.com') ? 'Google Apps Script' : 'Mode Offline Lokal'}
-                                </div>
-                                <p className="text-[11px] text-purple-700 font-medium mt-1">
-                                    <i className="fas fa-shield-alt mr-1"></i>Tersimpan di Penyimpanan Aman
-                                </p>
+                        {/* Overall Progress Bar */}
+                        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                                <h4 className="font-bold text-gray-800 text-sm">
+                                    {isSantri ? 'Kemajuan Menuju Khatam 30 Juz' : 'Progres Rata-rata Santri'}
+                                </h4>
+                                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full">
+                                    {currentSantri?.totalHafalanJuz || 7} dari 30 Juz Selesai ({Math.round(((currentSantri?.totalHafalanJuz || 7) / 30) * 100)}%)
+                                </span>
+                            </div>
+                            <div className="w-full bg-gray-100 h-3.5 rounded-full overflow-hidden p-0.5 border border-gray-200">
+                                <div 
+                                    className="bg-gradient-to-r from-emerald-600 to-teal-500 h-full rounded-full transition-all duration-500"
+                                    style={{ width: `${Math.round(((currentSantri?.totalHafalanJuz || 7) / 30) * 100)}%` }}
+                                ></div>
+                            </div>
+                            <div className="mt-3 flex justify-between text-[11px] text-gray-500">
+                                <span>Juz 1 (Mulai)</span>
+                                <span>Juz 15 (Pertengahan)</span>
+                                <span>Juz 30 (Khotmil Qur'an)</span>
                             </div>
                         </div>
 
-                        {/* Recent Setoran Table & Quick Action */}
-                        <div className="bg-white rounded-2xl border border-gray-200 shadow-xs p-6">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-gray-100">
+                        {/* Recent Activity Grid: Catatan Jurnal & Riwayat Setoran */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            {/* Jurnal Belajar Terbaru */}
+                            <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs flex flex-col justify-between">
                                 <div>
-                                    <h4 className="font-bold text-gray-800 text-base flex items-center gap-2">
-                                        <i className="fas fa-history text-emerald-700"></i> Setoran Hafalan Terbaru
-                                    </h4>
-                                    <p className="text-xs text-gray-500 mt-0.5">Catatan Ziyadah dan Muroja'ah santri terkini</p>
+                                    <div className="flex justify-between items-center mb-4 pb-3 border-b border-gray-100">
+                                        <h4 className="font-bold text-gray-800 text-sm flex items-center gap-2">
+                                            <i className="fas fa-book-reader text-emerald-700"></i> Catatan Belajar Terkini
+                                        </h4>
+                                        <button onClick={() => setActiveTab('jurnal')} className="text-xs text-emerald-700 font-bold hover:underline">
+                                            Lihat Semua
+                                        </button>
+                                    </div>
+                                    <div className="space-y-3">
+                                        {santriJurnals.slice(0, 3).map(jrn => (
+                                            <div key={jrn.id} className="p-3 bg-gray-50 rounded-xl border border-gray-100 text-xs">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <span className="font-bold text-gray-900">{jrn.kegiatan}</span>
+                                                        <span className="text-gray-500 block text-[11px]">{jrn.tanggal} • {jrn.durasiMenit} Menit</span>
+                                                    </div>
+                                                    <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded text-[10px] font-bold">
+                                                        {jrn.tingkatKelancaran}
+                                                    </span>
+                                                </div>
+                                                <p className="text-gray-700 font-semibold mt-1">
+                                                    Surat {jrn.surat} (Ayat {jrn.ayatAwal}-{jrn.ayatAkhir}) • Juz {jrn.juz}
+                                                </p>
+                                                {jrn.catatanAyatSulit && (
+                                                    <p className="text-gray-500 italic mt-0.5 text-[11px]">
+                                                        "{jrn.catatanAyatSulit}"
+                                                    </p>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                                 <button
-                                    onClick={() => setActiveTab('setoran')}
-                                    className="text-emerald-700 hover:text-emerald-900 font-semibold text-xs flex items-center gap-1 self-start sm:self-auto"
+                                    onClick={() => setIsAddJurnalOpen(true)}
+                                    className="mt-4 w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold py-2 rounded-xl transition border border-emerald-200 flex items-center justify-center gap-1.5"
                                 >
-                                    Lihat Semua Catatan <i className="fas fa-arrow-right text-[10px]"></i>
+                                    <i className="fas fa-plus"></i> Tambah Catatan Belajar Baru
                                 </button>
                             </div>
 
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left text-xs">
-                                    <thead>
-                                        <tr className="bg-gray-50 text-gray-600 uppercase font-semibold">
-                                            <th className="py-2.5 px-3 rounded-l-lg">Tanggal</th>
-                                            <th className="py-2.5 px-3">Santri</th>
-                                            <th className="py-2.5 px-3">Jenis</th>
-                                            <th className="py-2.5 px-3">Surat &amp; Ayat</th>
-                                            <th className="py-2.5 px-3">Juz</th>
-                                            <th className="py-2.5 px-3">Nilai</th>
-                                            <th className="py-2.5 px-3 rounded-r-lg">Musyrif</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100">
-                                        {setoranList.slice(0, 5).map((item) => (
-                                            <tr key={item.id} className="hover:bg-gray-50/80 transition">
-                                                <td className="py-3 px-3 text-gray-500 font-medium">{item.tanggal}</td>
-                                                <td className="py-3 px-3 font-bold text-gray-800">{item.santriNama}</td>
-                                                <td className="py-3 px-3">
-                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                                        item.jenis === 'Ziyadah' 
-                                                            ? 'bg-emerald-100 text-emerald-800' 
-                                                            : 'bg-blue-100 text-blue-800'
-                                                    }`}>
-                                                        {item.jenis}
-                                                    </span>
-                                                </td>
-                                                <td className="py-3 px-3 font-semibold text-gray-700">
-                                                    {item.surat} : {item.ayatAwal}-{item.ayatAkhir}
-                                                </td>
-                                                <td className="py-3 px-3 text-gray-600 font-medium">Juz {item.juz}</td>
-                                                <td className="py-3 px-3">
+                            {/* Setoran Resmi dari Ustadz */}
+                            <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs flex flex-col justify-between">
+                                <div>
+                                    <div className="flex justify-between items-center mb-4 pb-3 border-b border-gray-100">
+                                        <h4 className="font-bold text-gray-800 text-sm flex items-center gap-2">
+                                            <i className="fas fa-certificate text-amber-600"></i> Evaluasi Ustadz Pembina
+                                        </h4>
+                                        <button onClick={() => setActiveTab('setoran')} className="text-xs text-emerald-700 font-bold hover:underline">
+                                            Lihat Semua
+                                        </button>
+                                    </div>
+                                    <div className="space-y-3">
+                                        {filteredSetoran.slice(0, 3).map(item => (
+                                            <div key={item.id} className="p-3 bg-gray-50 rounded-xl border border-gray-100 text-xs">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <span className="font-bold text-gray-900">{item.jenis}</span>
+                                                        <span className="text-gray-500 block text-[11px]">{item.tanggal} • Musyrif: {item.musyrif}</span>
+                                                    </div>
                                                     <span className="bg-amber-100 text-amber-900 px-2 py-0.5 rounded text-[10px] font-bold">
                                                         {item.nilai}
                                                     </span>
-                                                </td>
-                                                <td className="py-3 px-3 text-gray-600">{item.musyrif}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* TAB: DATA SANTRI */}
-                {activeTab === 'santri' && (
-                    <div className="space-y-4">
-                        <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                            <div className="relative flex-1 max-w-md">
-                                <i className="fas fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
-                                <input
-                                    type="text"
-                                    placeholder="Cari santri berdasarkan Nama, NIS, atau Halaqah..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                />
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <span className="text-xs text-gray-500 font-medium">
-                                    Total: <strong>{filteredSantri.length}</strong> santri
-                                </span>
-                                {(isAdmin || isUstadz) && (
-                                    <button
-                                        onClick={() => setIsAddSantriOpen(true)}
-                                        className="bg-emerald-700 hover:bg-emerald-800 text-white px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs"
-                                    >
-                                        <i className="fas fa-plus"></i> Tambah Santri
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {filteredSantri.map((santri) => (
-                                <div key={santri.id} className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs hover:shadow-md transition flex flex-col justify-between">
-                                    <div>
-                                        <div className="flex items-start justify-between">
-                                            <div>
-                                                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
-                                                    NIS: {santri.nis}
-                                                </span>
-                                                <h4 className="font-bold text-gray-900 text-sm mt-1.5">{santri.nama}</h4>
-                                                <p className="text-xs text-gray-500">{santri.kelas}</p>
+                                                </div>
+                                                <p className="text-gray-700 font-semibold mt-1">
+                                                    Surat {item.surat} (Ayat {item.ayatAwal}-{item.ayatAkhir}) • Juz {item.juz}
+                                                </p>
+                                                <p className="text-gray-600 italic mt-0.5 text-[11px] bg-white p-1.5 rounded border border-gray-100">
+                                                    "{item.catatan}"
+                                                </p>
                                             </div>
-                                            <div className="text-right">
-                                                <div className="text-xl font-bold text-emerald-800">{santri.totalHafalanJuz} <span className="text-xs font-normal">Juz</span></div>
-                                                <span className="text-[10px] text-gray-400">Total Hafalan</span>
-                                            </div>
-                                        </div>
-
-                                        <div className="mt-4 pt-3 border-t border-gray-100 text-xs space-y-1.5">
-                                            <div className="flex justify-between text-gray-600">
-                                                <span>Halaqah:</span>
-                                                <span className="font-semibold text-gray-800">{santri.halaqah}</span>
-                                            </div>
-                                            <div className="flex justify-between text-gray-600">
-                                                <span>Musyrif:</span>
-                                                <span className="font-semibold text-gray-800">{santri.musyrif}</span>
-                                            </div>
-                                            <div className="flex justify-between text-gray-600">
-                                                <span>Surat Terakhir:</span>
-                                                <span className="font-semibold text-emerald-700">{santri.suratTerakhir}</span>
-                                            </div>
-                                        </div>
-
-                                        {/* Progress bar to 30 Juz */}
-                                        <div className="mt-3">
-                                            <div className="flex justify-between text-[10px] text-gray-500 mb-1">
-                                                <span>Target 30 Juz</span>
-                                                <span className="font-bold">{Math.round((santri.totalHafalanJuz / 30) * 100)}%</span>
-                                            </div>
-                                            <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-                                                <div 
-                                                    className="bg-emerald-600 h-full rounded-full transition-all"
-                                                    style={{ width: `${Math.min(100, (santri.totalHafalanJuz / 30) * 100)}%` }}
-                                                ></div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="mt-4 pt-2 flex gap-2">
-                                        <button
-                                            onClick={() => {
-                                                setSelectedJuzSantriId(santri.id);
-                                                setActiveTab('hafalan');
-                                            }}
-                                            className="flex-1 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-semibold py-2 rounded-xl border border-amber-200 transition flex items-center justify-center gap-1.5"
-                                        >
-                                            <i className="fas fa-book-quran text-amber-700"></i>
-                                            <span>Buka Peta 30 Juz</span>
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                setSelectedSantriId(santri.id);
-                                                setIsAddSetoranOpen(true);
-                                            }}
-                                            className="px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs rounded-xl border border-emerald-200"
-                                            title="Input Setoran"
-                                        >
-                                            <i className="fas fa-plus"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {/* TAB: SETORAN HAFALAN */}
-                {activeTab === 'setoran' && (
-                    <div className="space-y-4">
-                        <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-                            <div className="flex flex-wrap items-center gap-3">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-xs font-semibold text-gray-600">Jenis:</span>
-                                    <div className="inline-flex rounded-lg border border-gray-200 p-0.5 bg-gray-50 text-xs">
-                                        {(['Semua', 'Ziyadah', "Muroja'ah"] as const).map(jenis => (
-                                            <button
-                                                key={jenis}
-                                                onClick={() => setFilterJenis(jenis)}
-                                                className={`px-3 py-1 rounded-md font-medium transition ${
-                                                    filterJenis === jenis ? 'bg-emerald-700 text-white shadow-xs' : 'text-gray-600 hover:text-gray-900'
-                                                }`}
-                                            >
-                                                {jenis}
-                                            </button>
                                         ))}
                                     </div>
                                 </div>
-
-                                {!isSantri && (
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xs font-semibold text-gray-600">Santri:</span>
-                                        <select
-                                            value={filterSantriId}
-                                            onChange={(e) => setFilterSantriId(e.target.value)}
-                                            className="border border-gray-300 p-1.5 rounded-lg text-xs outline-none bg-white"
-                                        >
-                                            <option value="Semua">Semua Santri</option>
-                                            {santriList.map(s => (
-                                                <option key={s.id} value={s.id}>{s.nama}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="flex items-center gap-2">
                                 <button
-                                    onClick={exportCSV}
-                                    className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition"
+                                    onClick={() => setActiveTab('rencana')}
+                                    className="mt-4 w-full bg-teal-50 hover:bg-teal-100 text-teal-800 text-xs font-bold py-2 rounded-xl transition border border-teal-200 flex items-center justify-center gap-1.5"
                                 >
-                                    <i className="fas fa-file-csv text-emerald-600"></i> Ekspor CSV
+                                    <i className="fas fa-calendar-alt"></i> Lihat Jadwal &amp; Rencana Setoran
                                 </button>
-                                {(isAdmin || isUstadz) && (
-                                    <button
-                                        onClick={() => setIsAddSetoranOpen(true)}
-                                        className="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs"
-                                    >
-                                        <i className="fas fa-plus"></i> Setoran Baru
-                                    </button>
-                                )}
                             </div>
                         </div>
+                    </div>
+                )}
 
+                {/* TAB 2: JURNAL BELAJAR & MUTABA'AH MANDIRI */}
+                {activeTab === 'jurnal' && (
+                    <div className="space-y-6">
+                        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div>
+                                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                                    Mutaba'ah Yaumiyah Mandiri
+                                </span>
+                                <h3 className="text-xl font-bold text-gray-900 mt-1">Jurnal Belajar &amp; Muroja'ah Harian</h3>
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                    Catat setiap aktivitas ziyadah, muroja'ah mandiri, atau simakan bersama teman agar progres belajar terpantau rapi.
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setIsAddJurnalOpen(true)}
+                                className="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs transition self-start sm:self-auto"
+                            >
+                                <i className="fas fa-pen-fancy"></i>
+                                <span>Tulis Jurnal Belajar Baru</span>
+                            </button>
+                        </div>
+
+                        {/* Journal List */}
                         <div className="space-y-3">
-                            {filteredSetoran.length === 0 ? (
+                            {santriJurnals.length === 0 ? (
                                 <div className="bg-white p-12 text-center rounded-2xl border border-gray-200 text-gray-500">
-                                    <i className="fas fa-book-open text-4xl text-gray-300 mb-2"></i>
-                                    <p className="font-semibold">Belum ada catatan setoran yang sesuai filter.</p>
+                                    <i className="fas fa-feather-alt text-4xl text-gray-300 mb-2"></i>
+                                    <p className="font-semibold">Belum ada catatan jurnal belajar.</p>
+                                    <p className="text-xs text-gray-400 mt-1">Mulai catat ziyadah dan muroja'ah mandiri Anda hari ini.</p>
                                 </div>
                             ) : (
-                                filteredSetoran.map(record => (
-                                    <div key={record.id} className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs hover:border-emerald-200 transition">
+                                santriJurnals.map(jrn => (
+                                    <div key={jrn.id} className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs hover:border-emerald-300 transition">
                                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-gray-100">
                                             <div className="flex items-center gap-3">
                                                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${
-                                                    record.jenis === 'Ziyadah' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
+                                                    jrn.kegiatan === 'Ziyadah Mandiri' ? 'bg-emerald-100 text-emerald-800' :
+                                                    jrn.kegiatan === "Muroja'ah Mandiri" ? 'bg-blue-100 text-blue-800' :
+                                                    jrn.kegiatan === 'Talaqqi Simakan' ? 'bg-purple-100 text-purple-800' :
+                                                    'bg-amber-100 text-amber-800'
                                                 }`}>
-                                                    <i className={`fas ${record.jenis === 'Ziyadah' ? 'fa-plus' : 'fa-redo'}`}></i>
+                                                    <i className={`fas ${
+                                                        jrn.kegiatan === 'Ziyadah Mandiri' ? 'fa-plus' :
+                                                        jrn.kegiatan === "Muroja'ah Mandiri" ? 'fa-redo' :
+                                                        jrn.kegiatan === 'Talaqqi Simakan' ? 'fa-user-friends' :
+                                                        'fa-spell-check'
+                                                    }`}></i>
                                                 </div>
                                                 <div>
-                                                    <h4 className="font-bold text-gray-900 text-sm">{record.santriNama}</h4>
+                                                    <h4 className="font-bold text-gray-900 text-sm">{jrn.kegiatan}</h4>
                                                     <p className="text-xs text-gray-500">
-                                                        Tanggal: {record.tanggal} • Musyrif: {record.musyrif}
+                                                        Tanggal: {jrn.tanggal} • Durasi: {jrn.durasiMenit} Menit
                                                     </p>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-                                                    record.jenis === 'Ziyadah' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
+                                                    jrn.tingkatKelancaran === 'Sangat Lancar' ? 'bg-emerald-100 text-emerald-800' :
+                                                    jrn.tingkatKelancaran === 'Cukup Lancar' ? 'bg-blue-100 text-blue-800' :
+                                                    'bg-amber-100 text-amber-800'
                                                 }`}>
-                                                    {record.jenis}
-                                                </span>
-                                                <span className="bg-amber-100 text-amber-900 px-2.5 py-1 rounded-full text-xs font-bold">
-                                                    {record.nilai}
+                                                    {jrn.tingkatKelancaran}
                                                 </span>
                                             </div>
                                         </div>
 
-                                        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                                        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                                             <div>
-                                                <span className="text-gray-500">Materi Setoran:</span>
-                                                <p className="font-bold text-gray-800 text-sm mt-0.5">
-                                                    Surat {record.surat} (Ayat {record.ayatAwal} s/d {record.ayatAkhir}) • Juz {record.juz}
+                                                <span className="text-gray-500">Ayat yang Dipelajari:</span>
+                                                <p className="font-bold text-gray-900 text-sm mt-0.5">
+                                                    Surat {jrn.surat} ({jrn.ayatAwal} s/d {jrn.ayatAkhir}) • Juz {jrn.juz}
                                                 </p>
                                             </div>
                                             <div>
-                                                <span className="text-gray-500">Catatan &amp; Evaluasi Musyrif:</span>
+                                                <span className="text-gray-500">Catatan Kesulitan / Ayat Mutasyabihat:</span>
                                                 <p className="italic text-gray-700 bg-gray-50 p-2.5 rounded-lg mt-0.5 border border-gray-100">
-                                                    "{record.catatan || 'Lancar tanpa catatan khusus'}"
+                                                    "{jrn.catatanAyatSulit || 'Tidak ada kesulitan, muroja\'ah lancar'}"
                                                 </p>
                                             </div>
                                         </div>
@@ -909,10 +1013,86 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                     </div>
                 )}
 
-                {/* TAB: MODUL PROGRES 30 JUZ AL-QUR'AN */}
+                {/* TAB 3: RENCANA & JADWAL SETORAN */}
+                {activeTab === 'rencana' && (
+                    <div className="space-y-6">
+                        <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div>
+                                <span className="text-[10px] font-bold text-teal-700 bg-teal-50 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                                    Koordinasi dengan Musyrif
+                                </span>
+                                <h3 className="text-xl font-bold text-gray-900 mt-1">Rencana &amp; Jadwal Setoran</h3>
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                    Ajukan rencana setoran yang sudah siap diujikan di hadapan Ustadz pembina.
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setIsAddRencanaOpen(true)}
+                                className="bg-teal-700 hover:bg-teal-800 text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs transition self-start sm:self-auto"
+                            >
+                                <i className="fas fa-calendar-plus"></i>
+                                <span>Ajukan Jadwal Setoran</span>
+                            </button>
+                        </div>
+
+                        <div className="space-y-3">
+                            {santriRencana.length === 0 ? (
+                                <div className="bg-white p-12 text-center rounded-2xl border border-gray-200 text-gray-500">
+                                    <i className="fas fa-calendar-times text-4xl text-gray-300 mb-2"></i>
+                                    <p className="font-semibold">Belum ada antrean rencana setoran.</p>
+                                </div>
+                            ) : (
+                                santriRencana.map(rcn => (
+                                    <div key={rcn.id} className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs hover:border-teal-300 transition">
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-gray-100">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-xl bg-teal-100 text-teal-800 flex items-center justify-center font-bold text-sm">
+                                                    <i className="fas fa-clock"></i>
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-bold text-gray-900 text-sm">Target: {rcn.tanggalTarget} ({rcn.waktu})</h4>
+                                                    <p className="text-xs text-gray-500">
+                                                        Jenis: <strong>{rcn.jenis}</strong> • Surat {rcn.surat} ({rcn.ayatAwal}-{rcn.ayatAkhir}) Juz {rcn.juz}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                                                    rcn.status === 'Disetujui Musyrif' ? 'bg-emerald-100 text-emerald-800' :
+                                                    rcn.status === 'Selesai Disetorkan' ? 'bg-blue-100 text-blue-800' :
+                                                    'bg-amber-100 text-amber-800'
+                                                }`}>
+                                                    {rcn.status}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                                            <p className="text-gray-600 italic">
+                                                Catatan santri: "{rcn.catatanSantri || 'Siap disetorkan'}"
+                                            </p>
+
+                                            {(isAdmin || isUstadz) && rcn.status === 'Diajukan' && (
+                                                <div className="flex gap-2 self-end sm:self-auto">
+                                                    <button
+                                                        onClick={() => handleApproveRencana(rcn.id, 'Disetujui Musyrif')}
+                                                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded-lg text-xs font-semibold"
+                                                    >
+                                                        Setujui Jadwal
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* TAB 4: MODUL 30 JUZ AL-QUR'AN */}
                 {activeTab === 'hafalan' && (
                     <div className="space-y-6">
-                        {/* Selector Santri & Ringkasan Capaian */}
                         <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs">
                             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-gray-100">
                                 <div>
@@ -923,7 +1103,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                                         <span>Progres 30 Juz Al-Qur'an</span>
                                     </h3>
                                     <p className="text-xs text-gray-500 mt-0.5">
-                                        Klik pada salah satu kotak Juz untuk melihat detail materi, riwayat setoran, serta mengupdate kelulusan ujian tasmi'.
+                                        Klik pada salah satu kotak Juz untuk melihat pokok kandungan surat, riwayat setoran, serta mengupdate kelulusan ujian tasmi'.
                                     </p>
                                 </div>
 
@@ -950,15 +1130,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                                 <div className="md:col-span-2 relative z-10">
                                     <div className="flex items-center gap-3">
                                         <div className="w-12 h-12 rounded-full bg-emerald-800 border-2 border-emerald-400 flex items-center justify-center text-xl font-bold">
-                                            {currentJuzSantri?.nama ? currentJuzSantri.nama.charAt(0) : 'S'}
+                                            {activeJuzSantri?.nama ? activeJuzSantri.nama.charAt(0) : 'S'}
                                         </div>
                                         <div>
-                                            <h4 className="text-base font-bold text-white">{currentJuzSantri?.nama}</h4>
+                                            <h4 className="text-base font-bold text-white">{activeJuzSantri?.nama}</h4>
                                             <p className="text-xs text-emerald-200">
-                                                NIS: {currentJuzSantri?.nis} • {currentJuzSantri?.kelas}
+                                                NIS: {activeJuzSantri?.nis} • {activeJuzSantri?.kelas}
                                             </p>
                                             <p className="text-[11px] text-emerald-300 mt-0.5">
-                                                Musyrif: {currentJuzSantri?.musyrif} ({currentJuzSantri?.halaqah})
+                                                Musyrif: {activeJuzSantri?.musyrif} ({activeJuzSantri?.halaqah})
                                             </p>
                                         </div>
                                     </div>
@@ -973,9 +1153,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                                 </div>
 
                                 <div className="flex flex-col justify-center relative z-10">
-                                    <span className="text-[11px] text-emerald-300 uppercase tracking-wider font-semibold">Status Ziyadah Aktif</span>
+                                    <span className="text-[11px] text-emerald-300 uppercase tracking-wider font-semibold">Hafalan Terakhir</span>
                                     <div className="text-lg font-bold text-white mt-0.5 truncate">
-                                        {currentJuzSantri?.suratTerakhir || 'Juz ' + (totalMutqin + 1)}
+                                        {activeJuzSantri?.suratTerakhir || 'Juz ' + (totalMutqin + 1)}
                                     </div>
                                     <span className="text-[11px] text-amber-300">
                                         {30 - totalMutqin} Juz tersisa
@@ -1076,9 +1256,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                         {juzViewMode === 'grid' && (
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-3.5">
                                 {JUZ_METADATA.map((meta) => {
-                                    const progress = juzProgressMap[meta.juz] || {
+                                    const progress = activeJuzProgressMap[meta.juz] || {
                                         juz: meta.juz,
-                                        status: meta.juz <= (currentJuzSantri?.totalHafalanJuz || 0) ? 'Mutqin' : 'Belum'
+                                        status: meta.juz <= (activeJuzSantri?.totalHafalanJuz || 0) ? 'Mutqin' : 'Belum'
                                     };
 
                                     if (juzFilterStatus !== 'Semua' && progress.status !== juzFilterStatus) {
@@ -1103,7 +1283,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                                                     : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
                                             }`}
                                         >
-                                            {/* Badge Juz Top */}
                                             <div>
                                                 <div className="flex items-start justify-between">
                                                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
@@ -1139,7 +1318,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                                                 </p>
                                             </div>
 
-                                            {/* Status Footer */}
                                             <div className="mt-4 pt-2.5 border-t border-black/5 flex items-center justify-between text-[11px]">
                                                 <span className={`font-bold ${
                                                     isMutqin ? 'text-emerald-200' :
@@ -1168,14 +1346,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                             <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
                                 <div className="p-4 bg-gray-50 border-b border-gray-200 flex justify-between items-center text-xs">
                                     <span className="font-bold text-gray-700">Tabel Rincian Capaian Mutaba'ah Juz 1 s/d 30</span>
-                                    <span className="text-gray-500">Klik baris untuk mengubah status atau mencatat evaluasi</span>
+                                    <span className="text-gray-500">Klik baris untuk melihat detail atau mengubah status ujian tasmi'</span>
                                 </div>
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left text-xs">
                                         <thead>
                                             <tr className="bg-gray-100 text-gray-700 uppercase font-semibold">
                                                 <th className="py-3 px-4">Juz</th>
-                                                <th className="py-3 px-4">Nama Juz (Arab &amp; Latin)</th>
+                                                <th className="py-3 px-4">Nama Juz</th>
                                                 <th className="py-3 px-4">Cakupan Surat</th>
                                                 <th className="py-3 px-4">Status</th>
                                                 <th className="py-3 px-4">Nilai Tasmi'</th>
@@ -1186,9 +1364,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                                         </thead>
                                         <tbody className="divide-y divide-gray-100">
                                             {JUZ_METADATA.map((meta) => {
-                                                const progress = juzProgressMap[meta.juz] || {
+                                                const progress = activeJuzProgressMap[meta.juz] || {
                                                     juz: meta.juz,
-                                                    status: meta.juz <= (currentJuzSantri?.totalHafalanJuz || 0) ? 'Mutqin' : 'Belum'
+                                                    status: meta.juz <= (activeJuzSantri?.totalHafalanJuz || 0) ? 'Mutqin' : 'Belum'
                                                 };
 
                                                 if (juzFilterStatus !== 'Semua' && progress.status !== juzFilterStatus) {
@@ -1234,7 +1412,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                                                                 }}
                                                                 className="text-emerald-700 hover:text-emerald-900 font-bold"
                                                             >
-                                                                <i className="fas fa-edit mr-1"></i> Edit
+                                                                <i className="fas fa-eye mr-1"></i> Detail
                                                             </button>
                                                         </td>
                                                     </tr>
@@ -1248,7 +1426,225 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                     </div>
                 )}
 
-                {/* TAB: PENGATURAN & BACKEND */}
+                {/* TAB 5: DATA SANTRI (Admin / Ustadz) */}
+                {activeTab === 'santri' && (
+                    <div className="space-y-4">
+                        <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="relative flex-1 max-w-md">
+                                <i className="fas fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                                <input
+                                    type="text"
+                                    placeholder="Cari santri berdasarkan Nama, NIS, atau Halaqah..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                />
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <span className="text-xs text-gray-500 font-medium">
+                                    Total: <strong>{filteredSantri.length}</strong> santri
+                                </span>
+                                {(isAdmin || isUstadz) && (
+                                    <button
+                                        onClick={() => setIsAddSantriOpen(true)}
+                                        className="bg-emerald-700 hover:bg-emerald-800 text-white px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs"
+                                    >
+                                        <i className="fas fa-plus"></i> Tambah Santri
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {filteredSantri.map((santri) => (
+                                <div key={santri.id} className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs hover:shadow-md transition flex flex-col justify-between">
+                                    <div>
+                                        <div className="flex items-start justify-between">
+                                            <div>
+                                                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
+                                                    NIS: {santri.nis}
+                                                </span>
+                                                <h4 className="font-bold text-gray-900 text-sm mt-1.5">{santri.nama}</h4>
+                                                <p className="text-xs text-gray-500">{santri.kelas}</p>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className="text-xl font-bold text-emerald-800">{santri.totalHafalanJuz} <span className="text-xs font-normal">Juz</span></div>
+                                                <span className="text-[10px] text-gray-400">Total Hafalan</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-4 pt-3 border-t border-gray-100 text-xs space-y-1.5">
+                                            <div className="flex justify-between text-gray-600">
+                                                <span>Halaqah:</span>
+                                                <span className="font-semibold text-gray-800">{santri.halaqah}</span>
+                                            </div>
+                                            <div className="flex justify-between text-gray-600">
+                                                <span>Musyrif:</span>
+                                                <span className="font-semibold text-gray-800">{santri.musyrif}</span>
+                                            </div>
+                                            <div className="flex justify-between text-gray-600">
+                                                <span>Surat Terakhir:</span>
+                                                <span className="font-semibold text-emerald-700">{santri.suratTerakhir}</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Progress bar to 30 Juz */}
+                                        <div className="mt-3">
+                                            <div className="flex justify-between text-[10px] text-gray-500 mb-1">
+                                                <span>Target 30 Juz</span>
+                                                <span className="font-bold">{Math.round((santri.totalHafalanJuz / 30) * 100)}%</span>
+                                            </div>
+                                            <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                                                <div 
+                                                    className="bg-emerald-600 h-full rounded-full transition-all"
+                                                    style={{ width: `${Math.min(100, (santri.totalHafalanJuz / 30) * 100)}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-4 pt-2 flex gap-2">
+                                        <button
+                                            onClick={() => {
+                                                setSelectedJuzSantriId(santri.id);
+                                                setActiveTab('hafalan');
+                                            }}
+                                            className="flex-1 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-semibold py-2 rounded-xl border border-amber-200 transition flex items-center justify-center gap-1.5"
+                                        >
+                                            <i className="fas fa-book-quran text-amber-700"></i>
+                                            <span>Buka Peta 30 Juz</span>
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setSelectedSantriId(santri.id);
+                                                setIsAddSetoranOpen(true);
+                                            }}
+                                            className="px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs rounded-xl border border-emerald-200"
+                                            title="Input Setoran Resmi"
+                                        >
+                                            <i className="fas fa-plus"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* TAB 6: SETORAN HAFALAN RESMI */}
+                {activeTab === 'setoran' && (
+                    <div className="space-y-4">
+                        <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div className="flex flex-wrap items-center gap-3">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs font-semibold text-gray-600">Jenis:</span>
+                                    <div className="inline-flex rounded-lg border border-gray-200 p-0.5 bg-gray-50 text-xs">
+                                        {(['Semua', 'Ziyadah', "Muroja'ah"] as const).map(jenis => (
+                                            <button
+                                                key={jenis}
+                                                onClick={() => setFilterJenis(jenis)}
+                                                className={`px-3 py-1 rounded-md font-medium transition ${
+                                                    filterJenis === jenis ? 'bg-emerald-700 text-white shadow-xs' : 'text-gray-600 hover:text-gray-900'
+                                                }`}
+                                            >
+                                                {jenis}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {!isSantri && (
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs font-semibold text-gray-600">Santri:</span>
+                                        <select
+                                            value={filterSantriId}
+                                            onChange={(e) => setFilterSantriId(e.target.value)}
+                                            className="border border-gray-300 p-1.5 rounded-lg text-xs outline-none bg-white"
+                                        >
+                                            <option value="Semua">Semua Santri</option>
+                                            {santriList.map(s => (
+                                                <option key={s.id} value={s.id}>{s.nama}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={exportCSV}
+                                    className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition"
+                                >
+                                    <i className="fas fa-file-csv text-emerald-600"></i> Ekspor CSV
+                                </button>
+                                {(isAdmin || isUstadz) && (
+                                    <button
+                                        onClick={() => setIsAddSetoranOpen(true)}
+                                        className="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs"
+                                    >
+                                        <i className="fas fa-plus"></i> Setoran Baru
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="space-y-3">
+                            {filteredSetoran.length === 0 ? (
+                                <div className="bg-white p-12 text-center rounded-2xl border border-gray-200 text-gray-500">
+                                    <i className="fas fa-book-open text-4xl text-gray-300 mb-2"></i>
+                                    <p className="font-semibold">Belum ada catatan setoran resmi yang sesuai filter.</p>
+                                </div>
+                            ) : (
+                                filteredSetoran.map(record => (
+                                    <div key={record.id} className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs hover:border-emerald-200 transition">
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-gray-100">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${
+                                                    record.jenis === 'Ziyadah' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
+                                                }`}>
+                                                    <i className={`fas ${record.jenis === 'Ziyadah' ? 'fa-plus' : 'fa-redo'}`}></i>
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-bold text-gray-900 text-sm">{record.santriNama}</h4>
+                                                    <p className="text-xs text-gray-500">
+                                                        Tanggal: {record.tanggal} • Musyrif: {record.musyrif}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                                                    record.jenis === 'Ziyadah' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
+                                                }`}>
+                                                    {record.jenis}
+                                                </span>
+                                                <span className="bg-amber-100 text-amber-900 px-2.5 py-1 rounded-full text-xs font-bold">
+                                                    {record.nilai}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                                            <div>
+                                                <span className="text-gray-500">Materi Setoran:</span>
+                                                <p className="font-bold text-gray-800 text-sm mt-0.5">
+                                                    Surat {record.surat} (Ayat {record.ayatAwal} s/d {record.ayatAkhir}) • Juz {record.juz}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <span className="text-gray-500">Catatan &amp; Evaluasi Musyrif:</span>
+                                                <p className="italic text-gray-700 bg-gray-50 p-2.5 rounded-lg mt-0.5 border border-gray-100">
+                                                    "{record.catatan || 'Lancar tanpa catatan khusus'}"
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* TAB 7: PENGATURAN & BACKEND */}
                 {activeTab === 'pengaturan' && (
                     <div className="max-w-3xl space-y-6">
                         <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs">
@@ -1343,15 +1739,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                                 <i className="fas fa-trash-alt"></i> Reset Data Aplikasi Lokal
                             </h4>
                             <p className="text-xs text-gray-600 mb-3">
-                                Jika ingin mengembalikan data santri, setoran, dan peta 30 juz ke data contoh bawaan:
+                                Jika ingin mengembalikan data santri, setoran, jurnal belajar, dan peta 30 juz ke data contoh bawaan:
                             </p>
                             <button
                                 onClick={() => {
-                                    if (confirm('Yakin ingin mereset seluruh data santri, setoran, dan peta 30 juz ke bawaan?')) {
+                                    if (confirm('Yakin ingin mereset seluruh data santri, setoran, jurnal belajar, dan peta 30 juz ke bawaan?')) {
                                         setSantriList(INITIAL_SANTRI);
                                         setSetoranList(INITIAL_SETORAN);
+                                        setJurnalList(INITIAL_JURNAL_BELAJAR);
+                                        setRencanaList(INITIAL_RENCANA_SETORAN);
                                         localStorage.removeItem('darul_kamal_santri_list');
                                         localStorage.removeItem('darul_kamal_setoran_list');
+                                        localStorage.removeItem('darul_kamal_jurnal_list');
+                                        localStorage.removeItem('darul_kamal_rencana_list');
                                         alert('Data berhasil direset ke bawaan.');
                                     }
                                 }}
@@ -1377,7 +1777,380 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                 )}
             </main>
 
-            {/* MODAL DETAIL & EVALUASI JUZ 30 (MODUL JUZ) */}
+            {/* MODAL 1: TULIS JURNAL BELAJAR MANDIRI (SANTRI) */}
+            {isAddJurnalOpen && (
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto animate-scale-up">
+                        <div className="flex justify-between items-center pb-3 border-b border-gray-200 mb-4">
+                            <div>
+                                <h3 className="font-bold text-gray-900 text-base flex items-center gap-2">
+                                    <i className="fas fa-pen-nib text-emerald-700"></i> Catat Jurnal Belajar Mandiri
+                                </h3>
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                    Santri: <strong>{currentSantri?.nama}</strong>
+                                </p>
+                            </div>
+                            <button 
+                                onClick={() => setIsAddJurnalOpen(false)}
+                                className="text-gray-400 hover:text-gray-600 w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-100"
+                            >
+                                <i className="fas fa-times"></i>
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSaveJurnal} className="space-y-3.5 text-xs">
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Jenis Aktivitas</label>
+                                    <select
+                                        value={jurnalKegiatan}
+                                        onChange={(e) => setJurnalKegiatan(e.target.value as any)}
+                                        className="w-full border border-gray-300 p-2.5 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-emerald-500 bg-white"
+                                    >
+                                        <option value="Ziyadah Mandiri">Ziyadah Mandiri (Hafalan Baru)</option>
+                                        <option value="Muroja'ah Mandiri">Muroja'ah Mandiri</option>
+                                        <option value="Talaqqi Simakan">Talaqqi Simakan Bersama Teman</option>
+                                        <option value="Kajian Tajwid & Makhorij">Kajian Tajwid &amp; Makhorij</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Durasi Belajar (Menit)</label>
+                                    <input 
+                                        type="number"
+                                        min="5"
+                                        max="240"
+                                        value={jurnalDurasi}
+                                        onChange={(e) => setJurnalDurasi(e.target.value)}
+                                        className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500"
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block font-bold text-gray-700 mb-1">Surat Al-Qur'an</label>
+                                <select
+                                    value={jurnalSurahNomor}
+                                    onChange={(e) => {
+                                        const num = parseInt(e.target.value);
+                                        setJurnalSurahNomor(num);
+                                        const s = QURAN_SURAHS.find(q => q.nomor === num);
+                                        if (s) {
+                                            setJurnalJuz(String(s.juz));
+                                            setJurnalAyatAwal('1');
+                                            setJurnalAyatAkhir(String(Math.min(s.ayat, 20)));
+                                        }
+                                    }}
+                                    className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 bg-white"
+                                >
+                                    {QURAN_SURAHS.map(s => (
+                                        <option key={s.nomor} value={s.nomor}>
+                                            {s.nomor}. {s.nama} ({s.ayat} ayat, Juz {s.juz})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-3">
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Ayat Awal</label>
+                                    <input 
+                                        type="number"
+                                        min="1"
+                                        value={jurnalAyatAwal}
+                                        onChange={(e) => setJurnalAyatAwal(e.target.value)}
+                                        className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Ayat Akhir</label>
+                                    <input 
+                                        type="number"
+                                        min="1"
+                                        value={jurnalAyatAkhir}
+                                        onChange={(e) => setJurnalAyatAkhir(e.target.value)}
+                                        className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Juz</label>
+                                    <input 
+                                        type="number"
+                                        min="1"
+                                        max="30"
+                                        value={jurnalJuz}
+                                        onChange={(e) => setJurnalJuz(e.target.value)}
+                                        className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500"
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block font-bold text-gray-700 mb-1">Tingkat Kelancaran Mandiri</label>
+                                <select
+                                    value={jurnalKelancaran}
+                                    onChange={(e) => setJurnalKelancaran(e.target.value as any)}
+                                    className="w-full border border-gray-300 p-2.5 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-emerald-500 bg-white"
+                                >
+                                    <option value="Sangat Lancar">Sangat Lancar (Tanpa terbata / lupa)</option>
+                                    <option value="Cukup Lancar">Cukup Lancar (Lupa 1-2 kata)</option>
+                                    <option value="Masih Terbata">Masih Terbata (Perlu pengulangan lagi)</option>
+                                    <option value="Butuh Pendampingan">Butuh Pendampingan Teman / Musyrif</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block font-bold text-gray-700 mb-1">Catatan Ayat Sulit / Mutasyabihat</label>
+                                <textarea 
+                                    rows={3}
+                                    placeholder="Contoh: Ayat 35 ada kemiripan dengan Surat Al-Baqarah, waqaf di kata..."
+                                    value={jurnalCatatanSulit}
+                                    onChange={(e) => setJurnalCatatanSulit(e.target.value)}
+                                    className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500"
+                                />
+                            </div>
+
+                            <div className="flex justify-end gap-2 pt-3 border-t border-gray-200">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsAddJurnalOpen(false)}
+                                    className="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 font-semibold"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold shadow-xs transition"
+                                >
+                                    Simpan Catatan Belajar
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL 2: AJUKAN RENCANA SETORAN KE MUSYRIF */}
+            {isAddRencanaOpen && (
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto animate-scale-up">
+                        <div className="flex justify-between items-center pb-3 border-b border-gray-200 mb-4">
+                            <div>
+                                <h3 className="font-bold text-gray-900 text-base flex items-center gap-2">
+                                    <i className="fas fa-calendar-check text-teal-700"></i> Ajukan Jadwal Setoran ke Musyrif
+                                </h3>
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                    Musyrif Pembina: <strong>{currentSantri?.musyrif}</strong>
+                                </p>
+                            </div>
+                            <button 
+                                onClick={() => setIsAddRencanaOpen(false)}
+                                className="text-gray-400 hover:text-gray-600 w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-100"
+                            >
+                                <i className="fas fa-times"></i>
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSaveRencana} className="space-y-3.5 text-xs">
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Tanggal Rencana</label>
+                                    <input 
+                                        type="date"
+                                        value={rencanaTanggal}
+                                        onChange={(e) => setRencanaTanggal(e.target.value)}
+                                        className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Waktu Sesi</label>
+                                    <select
+                                        value={rencanaWaktu}
+                                        onChange={(e) => setRencanaWaktu(e.target.value as any)}
+                                        className="w-full border border-gray-300 p-2.5 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-emerald-500 bg-white"
+                                    >
+                                        <option value="Ba'da Subuh">Ba'da Subuh</option>
+                                        <option value="Ba'da Ashar">Ba'da Ashar</option>
+                                        <option value="Ba'da Maghrib">Ba'da Maghrib</option>
+                                        <option value="Ba'da Isya">Ba'da Isya</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Jenis Setoran</label>
+                                    <select
+                                        value={rencanaJenis}
+                                        onChange={(e) => setRencanaJenis(e.target.value as any)}
+                                        className="w-full border border-gray-300 p-2.5 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-emerald-500 bg-white"
+                                    >
+                                        <option value="Ziyadah">Ziyadah (Hafalan Baru)</option>
+                                        <option value="Muroja'ah">Muroja'ah (Pengulangan)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Surat Al-Qur'an</label>
+                                    <select
+                                        value={rencanaSurahNomor}
+                                        onChange={(e) => {
+                                            const num = parseInt(e.target.value);
+                                            setRencanaSurahNomor(num);
+                                            const s = QURAN_SURAHS.find(q => q.nomor === num);
+                                            if (s) {
+                                                setRencanaJuz(String(s.juz));
+                                                setRencanaAyatAwal('1');
+                                                setRencanaAyatAkhir(String(Math.min(s.ayat, 20)));
+                                            }
+                                        }}
+                                        className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 bg-white"
+                                    >
+                                        {QURAN_SURAHS.map(s => (
+                                            <option key={s.nomor} value={s.nomor}>
+                                                {s.nomor}. {s.nama} (Juz {s.juz})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-3">
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Ayat Awal</label>
+                                    <input 
+                                        type="number"
+                                        min="1"
+                                        value={rencanaAyatAwal}
+                                        onChange={(e) => setRencanaAyatAwal(e.target.value)}
+                                        className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Ayat Akhir</label>
+                                    <input 
+                                        type="number"
+                                        min="1"
+                                        value={rencanaAyatAkhir}
+                                        onChange={(e) => setRencanaAyatAkhir(e.target.value)}
+                                        className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Juz</label>
+                                    <input 
+                                        type="number"
+                                        min="1"
+                                        max="30"
+                                        value={rencanaJuz}
+                                        onChange={(e) => setRencanaJuz(e.target.value)}
+                                        className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500"
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block font-bold text-gray-700 mb-1">Pesan / Kesiapan untuk Ustadz</label>
+                                <textarea 
+                                    rows={2}
+                                    placeholder="Contoh: Sudah diulang 15x lancar di kamar, insyaAllah siap setor tasmi'..."
+                                    value={rencanaCatatan}
+                                    onChange={(e) => setRencanaCatatan(e.target.value)}
+                                    className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500"
+                                />
+                            </div>
+
+                            <div className="flex justify-end gap-2 pt-3 border-t border-gray-200">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsAddRencanaOpen(false)}
+                                    className="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 font-semibold"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-5 py-2 bg-teal-700 hover:bg-teal-800 text-white rounded-xl font-bold shadow-xs transition"
+                                >
+                                    Ajukan ke Ustadz
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL 3: UBAH PENANDA TERAKHIR BACA (BOOKMARK) */}
+            {isBookmarkModalOpen && (
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl animate-scale-up">
+                        <div className="flex justify-between items-center pb-3 border-b border-gray-200 mb-4">
+                            <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2">
+                                <i className="fas fa-bookmark text-amber-600"></i> Atur Penanda Terakhir Baca
+                            </h3>
+                            <button 
+                                onClick={() => setIsBookmarkModalOpen(false)}
+                                className="text-gray-400 hover:text-gray-600 w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-100"
+                            >
+                                <i className="fas fa-times"></i>
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSaveBookmark} className="space-y-3 text-xs">
+                            <div>
+                                <label className="block font-bold text-gray-700 mb-1">Surat Al-Qur'an</label>
+                                <select
+                                    value={bmSurahNomor}
+                                    onChange={(e) => setBmSurahNomor(parseInt(e.target.value))}
+                                    className="w-full border border-gray-300 p-2 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-emerald-500 bg-white"
+                                >
+                                    {QURAN_SURAHS.map(s => (
+                                        <option key={s.nomor} value={s.nomor}>
+                                            {s.nomor}. {s.nama} ({s.ayat} ayat, Juz {s.juz})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block font-bold text-gray-700 mb-1">Sampai Ayat Ke-</label>
+                                <input 
+                                    type="number"
+                                    min="1"
+                                    value={bmAyat}
+                                    onChange={(e) => setBmAyat(e.target.value)}
+                                    className="w-full border border-gray-300 p-2 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500"
+                                    required
+                                />
+                            </div>
+
+                            <div className="flex justify-end gap-2 pt-3 border-t border-gray-200">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsBookmarkModalOpen(false)}
+                                    className="px-3 py-1.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold shadow-xs"
+                                >
+                                    Simpan Penanda
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL 4: DETAIL & EVALUASI JUZ 30 */}
             {activeJuzModal !== null && activeMeta && (
                 <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
                     <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto animate-scale-up">
@@ -1391,7 +2164,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                                     <span className="font-bold text-gray-800 text-base">({activeMeta.namaLatin})</span>
                                 </div>
                                 <p className="text-xs text-gray-500 mt-0.5">
-                                    Santri: <strong>{currentJuzSantri?.nama}</strong> (NIS: {currentJuzSantri?.nis})
+                                    Santri: <strong>{activeJuzSantri?.nama}</strong> (NIS: {activeJuzSantri?.nis})
                                 </p>
                             </div>
                             <button 
@@ -1417,7 +2190,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                             </h4>
                             {modalJuzSetoran.length === 0 ? (
                                 <p className="text-xs text-gray-400 italic bg-gray-50 p-3 rounded-lg border border-gray-100 text-center">
-                                    Belum ada catatan setoran terinci untuk Juz {activeMeta.juz} pada santri ini.
+                                    Belum ada catatan setoran resmi untuk Juz {activeMeta.juz} pada santri ini.
                                 </p>
                             ) : (
                                 <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
@@ -1533,7 +2306,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                 </div>
             )}
 
-            {/* Modal Input Setoran Baru */}
+            {/* MODAL 5: INPUT SETORAN RESMI MUSYRIF */}
             {isAddSetoranOpen && (
                 <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
                     <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto animate-scale-up">
@@ -1676,7 +2449,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                 </div>
             )}
 
-            {/* Modal Tambah Santri Baru */}
+            {/* MODAL 6: PENDAFTARAN SANTRI BARU (ADMIN) */}
             {isAddSantriOpen && (
                 <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
                     <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl animate-scale-up">

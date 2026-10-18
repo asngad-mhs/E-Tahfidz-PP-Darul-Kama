@@ -9,7 +9,7 @@ Sistem Informasi Manajemen Tahfidz Al-Qur'an berbasis Web untuk **Pondok Pesantr
 - **Multi-Role User**:
   - 👑 **Administrator**: Pemantauan keseluruhan santri, halaqah, statistik pesantren, dan pengaturan integrasi backend.
   - 📖 **Ustadz / Musyrif**: Input setoran hafalan baru, penilaian tajwid/makhorijul huruf, serta evaluasi catatan santri.
-  - 🌟 **Santri**: Akses mandiri untuk melihat riwayat setoran, catatan evaluasi musyrif, dan peta capaian 30 Juz Al-Qur'an.
+  - 🌟 **Santri**: Ruang mandiri santri untuk mencatat **Jurnal Belajar & Muroja'ah Harian**, mengatur **Penanda Terakhir Dibaca (Bookmark)**, mengajukan **Rencana & Jadwal Setoran ke Musyrif**, melacak **Streak Keistiqomahan Belajar**, serta memantau **Peta Capaian 30 Juz Al-Qur'an**.
 - **Pencatatan Setoran Lengkap**:
   - Mendukung jenis setoran **Ziyadah** (hafalan baru) dan **Muroja'ah** (pengulangan).
   - Detail surat, rentang ayat, nomor juz, dan predikat nilai (*Mumtaz, Jayyid Jiddan, Jayyid, Maqbul*).
