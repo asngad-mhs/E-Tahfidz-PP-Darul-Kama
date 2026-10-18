@@ -6,8 +6,21 @@ import { DEFAULT_API_URL } from './constants';
 
 const App: React.FC = () => {
     // State management
-    const [user, setUser] = useState<User | null>(null);
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [user, setUser] = useState<User | null>(() => {
+        const savedUser = localStorage.getItem('darul_kamal_user');
+        if (savedUser) {
+            try {
+                return JSON.parse(savedUser);
+            } catch {
+                return null;
+            }
+        }
+        return null;
+    });
+
+    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+        return !!localStorage.getItem('darul_kamal_user');
+    });
     
     // API URL State - Initialize from LocalStorage or Default
     const [apiUrl, setApiUrl] = useState<string>(() => {
@@ -19,22 +32,25 @@ const App: React.FC = () => {
     useEffect(() => {
         if (apiUrl && apiUrl !== DEFAULT_API_URL) {
             localStorage.setItem('darul_kamal_api_url', apiUrl);
+        } else if (!apiUrl) {
+            localStorage.removeItem('darul_kamal_api_url');
         }
     }, [apiUrl]);
 
     const handleLoginSuccess = (userData: User) => {
         setUser(userData);
         setIsAuthenticated(true);
+        localStorage.setItem('darul_kamal_user', JSON.stringify(userData));
     };
 
     const handleLogout = () => {
         setUser(null);
         setIsAuthenticated(false);
-        // Optional: clear persisted user session if you implement session persistence
+        localStorage.removeItem('darul_kamal_user');
     };
 
     return (
-        <>
+        <div className="min-h-screen bg-gray-50 text-gray-800 antialiased selection:bg-emerald-500 selection:text-white">
             {!isAuthenticated ? (
                 <LoginScreen 
                     apiUrl={apiUrl} 
@@ -45,9 +61,11 @@ const App: React.FC = () => {
                 <Dashboard 
                     user={user} 
                     onLogout={handleLogout} 
+                    apiUrl={apiUrl}
+                    setApiUrl={setApiUrl}
                 />
             )}
-        </>
+        </div>
     );
 };
 
