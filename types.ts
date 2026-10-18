@@ -9,6 +9,17 @@ export interface User {
     [key: string]: any;
 }
 
+export type JuzStatusType = 'Mutqin' | 'Sedang Berjalan' | 'Perlu Muroja\'ah' | 'Belum';
+
+export interface JuzProgressRecord {
+    juz: number;
+    status: JuzStatusType;
+    tanggalUjian?: string;
+    nilaiTasmi?: string;
+    penguji?: string;
+    catatan?: string;
+}
+
 export interface Santri {
     id: string;
     nis: string;
@@ -19,6 +30,7 @@ export interface Santri {
     totalHafalanJuz: number;
     suratTerakhir: string;
     status: 'Aktif' | 'Izin' | 'Mutakharij';
+    juzProgress?: Record<number, JuzProgressRecord>;
 }
 
 export interface SetoranRecord {

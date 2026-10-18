@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>E-Tahfidz PP Darul Kamal</title>
+    <meta name="description" content="Sistem Manajemen E-Tahfidz untuk Pondok Pesantren Darul Kamal yang terintegrasi dengan Google Apps Script.">
+    <meta property="og:title" content="E-Tahfidz PP Darul Kamal">
+    <meta property="og:description" content="Sistem Manajemen E-Tahfidz untuk Pondok Pesantren Darul Kamal yang terintegrasi dengan Google Apps Script.">
+    <meta property="og:type" content="website">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📖</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -24,21 +29,22 @@
             }
         }
     </script>
-<script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@^19.2.4",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "react/": "https://esm.sh/react@^19.2.4/",
-    "vite": "https://esm.sh/vite@^7.3.1",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.3"
-  }
-}
-</script>
+    <style>
+        @media print {
+            aside, header, button:not(.print-include), .no-print {
+                display: none !important;
+            }
+            body, main {
+                overflow: visible !important;
+                height: auto !important;
+                background: white !important;
+                padding: 10px !important;
+            }
+        }
+    </style>
 </head>
-<body class="bg-gray-50 text-gray-800 antialiased h-screen overflow-hidden">
+<body class="bg-gray-50 text-gray-800 antialiased min-h-screen">
     <div id="root"></div>
-    <!-- PENTING: Script ini menghubungkan HTML dengan kode React -->
     <script type="module" src="/index.tsx"></script>
 </body>
 </html>

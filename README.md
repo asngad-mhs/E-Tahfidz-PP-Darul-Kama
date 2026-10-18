@@ -13,8 +13,12 @@ Sistem Informasi Manajemen Tahfidz Al-Qur'an berbasis Web untuk **Pondok Pesantr
 - **Pencatatan Setoran Lengkap**:
   - Mendukung jenis setoran **Ziyadah** (hafalan baru) dan **Muroja'ah** (pengulangan).
   - Detail surat, rentang ayat, nomor juz, dan predikat nilai (*Mumtaz, Jayyid Jiddan, Jayyid, Maqbul*).
-- **Peta Capaian 30 Juz Interaktif**:
-  - Visualisasi kotak status per Juz (*Mutqin*, *Sedang Berproses*, *Belum*).
+- **Modul Progres 30 Juz Al-Qur'an Interaktif**:
+  - Peta matriks 30 Juz lengkap dengan nama Arab (الم, سَيَقُولُ, dll.), nama Latin, dan rentang surat.
+  - Status 4 warna per juz: *Mutqin (Lulus Tasmi')*, *Sedang Berjalan (Ziyadah Aktif)*, *Perlu Muroja'ah Ulang*, dan *Belum Dimulai*.
+  - Modal interaktif evaluasi tasmi', penguji, tanggal kelulusan, dan catatan ayat mutasyabihat.
+  - Tampilan ganda (Grid Kartu 30 Juz & Tabel Rekapitulasi).
+  - Cetak Lembar Pantau Mutaba'ah 30 Juz siap cetak/PDF.
 - **Fleksibilitas Backend Ganda**:
   - **Mode Demo / Offline**: Berjalan langsung tanpa instalasi server tambahan (menggunakan penyimpanan lokal).
   - **Mode Google Apps Script**: Terhubung langsung ke spreadsheet Google Sheets untuk sinkronisasi data santri secara cloud.
