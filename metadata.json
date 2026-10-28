@@ -1,6 +1,6 @@
 {
   "name": "E-Tahfidz PP Darul Kamal",
-  "description": "Sistem Manajemen E-Tahfidz untuk Pondok Pesantren Darul Kamal yang terintegrasi dengan Google Apps Script.",
+  "description": "Sistem Manajemen E-Tahfidz untuk Pondok Pesantren Darul Kamal dengan Database Real-Time Firebase Firestore dan Google Apps Script.",
   "requestFramePermissions": [],
   "majorCapabilities": []
 }

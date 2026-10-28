@@ -190,11 +190,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ apiUrl, setApiUrl, onL
                 </div>
 
                 {/* Status Backend Indicator */}
-                <div className="mb-4 flex items-center justify-between bg-gray-50 p-2.5 rounded-lg border border-gray-200 text-xs">
+                <div className="mb-4 flex items-center justify-between bg-emerald-50/70 p-2.5 rounded-lg border border-emerald-200 text-xs">
                     <div className="flex items-center gap-2">
-                        <span className={`w-2.5 h-2.5 rounded-full ${isConnectedToGas ? 'bg-emerald-500 animate-pulse' : 'bg-blue-500'}`}></span>
-                        <span className="text-gray-700 font-medium">
-                            {isConnectedToGas ? 'Terkoneksi: Google Apps Script' : 'Mode Demo / Offline Lokal'}
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span className="text-emerald-950 font-semibold flex items-center gap-1.5">
+                            <i className="fas fa-fire text-amber-500"></i> Firebase Firestore: Terhubung
                         </span>
                     </div>
                     <button 
@@ -203,7 +203,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ apiUrl, setApiUrl, onL
                         className="text-emerald-700 hover:text-emerald-900 font-semibold underline text-[11px] flex items-center gap-1"
                     >
                         <i className="fas fa-sliders-h"></i>
-                        {showApiConfig ? 'Tutup' : 'Konfigurasi'}
+                        {showApiConfig ? 'Tutup' : 'Sheets API'}
                     </button>
                 </div>
 

@@ -1,0 +1,32 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    match /santri/{santriId} {
+      allow read: if true;
+      allow write: if isValidId(santriId);
+    }
+
+    match /setoran/{setoranId} {
+      allow read: if true;
+      allow write: if isValidId(setoranId);
+    }
+
+    match /jurnal/{jurnalId} {
+      allow read: if true;
+      allow write: if isValidId(jurnalId);
+    }
+
+    match /rencana/{rencanaId} {
+      allow read: if true;
+      allow write: if isValidId(rencanaId);
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

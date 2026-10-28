@@ -1,0 +1,97 @@
+{
+  "entities": {
+    "Santri": {
+      "title": "Santri",
+      "description": "Profil santri, capaian hafalan, dan informasi halaqah",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "nis": { "type": "string" },
+        "nama": { "type": "string" },
+        "kelas": { "type": "string" },
+        "halaqah": { "type": "string" },
+        "musyrif": { "type": "string" },
+        "totalHafalanJuz": { "type": "number" },
+        "suratTerakhir": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["nis", "nama", "halaqah", "musyrif"]
+    },
+    "SetoranRecord": {
+      "title": "SetoranRecord",
+      "description": "Catatan resmi setoran hafalan dari musyrif",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "santriId": { "type": "string" },
+        "santriNama": { "type": "string" },
+        "tanggal": { "type": "string" },
+        "jenis": { "type": "string" },
+        "surat": { "type": "string" },
+        "ayatAwal": { "type": "number" },
+        "ayatAkhir": { "type": "number" },
+        "juz": { "type": "number" },
+        "nilai": { "type": "string" },
+        "musyrif": { "type": "string" },
+        "catatan": { "type": "string" }
+      },
+      "required": ["santriId", "tanggal", "jenis", "surat", "nilai", "musyrif"]
+    },
+    "JurnalBelajarSantri": {
+      "title": "JurnalBelajarSantri",
+      "description": "Catatan belajar mandiri santri",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "santriId": { "type": "string" },
+        "tanggal": { "type": "string" },
+        "kegiatan": { "type": "string" },
+        "surat": { "type": "string" },
+        "ayatAwal": { "type": "number" },
+        "ayatAkhir": { "type": "number" },
+        "juz": { "type": "number" },
+        "durasiMenit": { "type": "number" },
+        "tingkatKelancaran": { "type": "string" },
+        "catatanAyatSulit": { "type": "string" }
+      },
+      "required": ["santriId", "tanggal", "kegiatan", "surat"]
+    },
+    "RencanaSetoran": {
+      "title": "RencanaSetoran",
+      "description": "Pengajuan jadwal dan target setoran santri ke musyrif",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "santriId": { "type": "string" },
+        "tanggalTarget": { "type": "string" },
+        "waktu": { "type": "string" },
+        "jenis": { "type": "string" },
+        "surat": { "type": "string" },
+        "ayatAwal": { "type": "number" },
+        "ayatAkhir": { "type": "number" },
+        "juz": { "type": "number" },
+        "status": { "type": "string" },
+        "catatanSantri": { "type": "string" }
+      },
+      "required": ["santriId", "tanggalTarget", "waktu", "jenis", "surat", "status"]
+    }
+  },
+  "firestore": {
+    "/santri/{santriId}": {
+      "schema": { "$ref": "#/entities/Santri" },
+      "description": "Data master santri pesantren"
+    },
+    "/setoran/{setoranId}": {
+      "schema": { "$ref": "#/entities/SetoranRecord" },
+      "description": "Riwayat evaluasi dan nilai setoran resmi"
+    },
+    "/jurnal/{jurnalId}": {
+      "schema": { "$ref": "#/entities/JurnalBelajarSantri" },
+      "description": "Catatan mutabaah mandiri belajar santri"
+    },
+    "/rencana/{rencanaId}": {
+      "schema": { "$ref": "#/entities/RencanaSetoran" },
+      "description": "Antrean jadwal pengajuan setoran ke musyrif"
+    }
+  }
+}

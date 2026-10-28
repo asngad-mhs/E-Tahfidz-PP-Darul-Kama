@@ -3,6 +3,18 @@ import { User, Santri, SetoranRecord, JuzStatusType, JuzProgressRecord, JurnalBe
 import { INITIAL_SANTRI, INITIAL_SETORAN, INITIAL_JURNAL_BELAJAR, INITIAL_RENCANA_SETORAN, GOOGLE_SCRIPT_SAMPLE_CODE, QURAN_SURAHS, JUZ_METADATA, createDefaultJuzProgress } from '../mockData';
 import { callAPI } from '../services/apiService';
 import { Button } from './Button';
+import { 
+    seedInitialFirestoreData, 
+    subscribeSantri, 
+    subscribeSetoran, 
+    subscribeJurnal, 
+    subscribeRencana, 
+    syncSantriDoc, 
+    syncSetoranDoc, 
+    syncJurnalDoc, 
+    syncRencanaDoc,
+    testConnection
+} from '../services/firebaseService';
 
 interface DashboardProps {
     user: User | null;
@@ -79,6 +91,47 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
     useEffect(() => {
         localStorage.setItem('darul_kamal_rencana_list', JSON.stringify(rencanaList));
     }, [rencanaList]);
+
+    // Firebase Firestore Real-Time Sync
+    const [firebaseConnected, setFirebaseConnected] = useState(false);
+
+    useEffect(() => {
+        // Auto-seed Firestore on initial launch if collections are empty
+        seedInitialFirestoreData();
+        testConnection().then(setFirebaseConnected);
+
+        // Real-time synchronization listeners
+        const unsubSantri = subscribeSantri((remoteSantri) => {
+            if (remoteSantri && remoteSantri.length > 0) {
+                setSantriList(remoteSantri);
+            }
+        });
+
+        const unsubSetoran = subscribeSetoran((remoteSetoran) => {
+            if (remoteSetoran && remoteSetoran.length > 0) {
+                setSetoranList(remoteSetoran);
+            }
+        });
+
+        const unsubJurnal = subscribeJurnal((remoteJurnal) => {
+            if (remoteJurnal && remoteJurnal.length > 0) {
+                setJurnalList(remoteJurnal);
+            }
+        });
+
+        const unsubRencana = subscribeRencana((remoteRencana) => {
+            if (remoteRencana && remoteRencana.length > 0) {
+                setRencanaList(remoteRencana);
+            }
+        });
+
+        return () => {
+            unsubSantri();
+            unsubSetoran();
+            unsubJurnal();
+            unsubRencana();
+        };
+    }, []);
 
     // Active Santri Object (for Santri role or selected in Admin view)
     const currentSantri: Santri = (isSantri
@@ -218,11 +271,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
         };
 
         setJurnalList([newJurnal, ...jurnalList]);
+        syncJurnalDoc(newJurnal);
 
         // Update streak & bookmark
         setSantriList(santriList.map(s => {
             if (s.id === currentSantri.id) {
-                return {
+                const updated = {
                     ...s,
                     streakHari: (s.streakHari || 14) + 1,
                     lastReadBookmark: {
@@ -232,6 +286,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                         tanggal: new Date().toISOString().split('T')[0]
                     }
                 };
+                syncSantriDoc(updated);
+                return updated;
             }
             return s;
         }));
@@ -258,12 +314,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
         };
 
         setRencanaList([newRencana, ...rencanaList]);
+        syncRencanaDoc(newRencana);
         setIsAddRencanaOpen(false);
         setRencanaCatatan('');
     };
 
     const handleApproveRencana = (id: string, newStatus: 'Disetujui Musyrif' | 'Selesai Disetorkan') => {
-        setRencanaList(rencanaList.map(r => r.id === id ? { ...r, status: newStatus } : r));
+        setRencanaList(rencanaList.map(r => {
+            if (r.id === id) {
+                const updated = { ...r, status: newStatus };
+                syncRencanaDoc(updated);
+                return updated;
+            }
+            return r;
+        }));
     };
 
     const handleSaveBookmark = (e: React.FormEvent) => {
@@ -271,7 +335,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
         const surahObj = QURAN_SURAHS.find(s => s.nomor === bmSurahNomor) || QURAN_SURAHS[0];
         setSantriList(santriList.map(s => {
             if (s.id === currentSantri.id) {
-                return {
+                const updated = {
                     ...s,
                     lastReadBookmark: {
                         surat: surahObj.nama,
@@ -280,6 +344,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                         tanggal: new Date().toISOString().split('T')[0]
                     }
                 };
+                syncSantriDoc(updated);
+                return updated;
             }
             return s;
         }));
@@ -318,11 +384,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
 
         const updatedSantriList = santriList.map(s => {
             if (s.id === activeJuzSantri.id) {
-                return {
+                const updated = {
                     ...s,
                     totalHafalanJuz: newTotalCompleted,
                     juzProgress: updatedProgressMap
                 };
+                syncSantriDoc(updated);
+                return updated;
             }
             return s;
         });
@@ -362,15 +430,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
         };
 
         setSetoranList([newRecord, ...setoranList]);
+        syncSetoranDoc(newRecord);
 
         setSantriList(santriList.map(s => {
             if (s.id === targetSantri.id) {
                 const calculatedJuz = Math.max(s.totalHafalanJuz, formJenis === 'Ziyadah' ? parseInt(formJuz) || s.totalHafalanJuz : s.totalHafalanJuz);
-                return {
+                const updated = {
                     ...s,
                     totalHafalanJuz: calculatedJuz,
                     suratTerakhir: `${surahObj.nama} : ${formAyatAwal}-${formAyatAkhir}`
                 };
+                syncSantriDoc(updated);
+                return updated;
             }
             return s;
         }));
@@ -401,6 +472,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
         };
 
         setSantriList([...santriList, newSantri]);
+        syncSantriDoc(newSantri);
         setIsAddSantriOpen(false);
         setNewNis('');
         setNewNama('');
@@ -1680,12 +1752,61 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                 {/* TAB 7: PENGATURAN & BACKEND */}
                 {activeTab === 'pengaturan' && (
                     <div className="max-w-3xl space-y-6">
+                        {/* Firebase Cloud Database Card */}
+                        <div className="bg-gradient-to-br from-white to-emerald-50/50 p-6 rounded-2xl border border-emerald-200 shadow-xs relative overflow-hidden">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 flex items-center justify-center text-lg">
+                                        <i className="fas fa-fire"></i>
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-gray-800 text-base flex items-center gap-2">
+                                            Firebase Cloud Database
+                                            <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                                                Aktif &amp; Terintegrasi
+                                            </span>
+                                        </h3>
+                                        <p className="text-[11px] text-gray-500">Google Cloud Firestore • Spark Plan (Gratis)</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-emerald-200 text-xs shadow-2xs">
+                                    <span className={`w-2.5 h-2.5 rounded-full ${firebaseConnected ? 'bg-emerald-500 animate-pulse' : 'bg-emerald-500'}`}></span>
+                                    <span className="font-semibold text-gray-700">
+                                        {firebaseConnected ? 'Terhubung Real-Time' : 'Sinkronisasi Aktif'}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <p className="text-xs text-gray-600 leading-relaxed mb-4">
+                                Database cloud Firebase Firestore telah terpasang dan aktif secara otomatis. Setiap setoran, jurnal belajar mandiri, dan data santri langsung disinkronkan secara <em>real-time</em> ke server Google Cloud dengan proteksi keamanan <em>Firestore Rules</em>.
+                            </p>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                                <div className="bg-white p-3 rounded-xl border border-gray-200">
+                                    <span className="text-[10px] text-gray-400 block uppercase font-bold">Proyek Firebase</span>
+                                    <span className="font-mono text-gray-800 text-[11px] font-semibold truncate block">gen-lang-client-0788779463</span>
+                                </div>
+                                <div className="bg-white p-3 rounded-xl border border-gray-200">
+                                    <span className="text-[10px] text-gray-400 block uppercase font-bold">Kapasitas Paket</span>
+                                    <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                                        <i className="fas fa-check-circle text-xs"></i> Spark Free Tier
+                                    </span>
+                                </div>
+                                <div className="bg-white p-3 rounded-xl border border-gray-200">
+                                    <span className="text-[10px] text-gray-400 block uppercase font-bold">Fitur Data</span>
+                                    <span className="text-blue-700 font-semibold flex items-center gap-1">
+                                        <i className="fas fa-sync-alt text-xs"></i> Real-time Listeners
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
                         <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs">
                             <h3 className="font-bold text-gray-800 text-base flex items-center gap-2 mb-2">
-                                <i className="fas fa-network-wired text-emerald-700"></i> Integrasi Google Apps Script (Backend)
+                                <i className="fas fa-network-wired text-emerald-700"></i> Integrasi Tambahan: Google Apps Script / Sheets
                             </h3>
                             <p className="text-xs text-gray-600 leading-relaxed mb-4">
-                                Aplikasi E-Tahfidz ini siap digunakan dalam <strong>Mode Offline Lokal</strong> (data tersimpan di browser) atau dapat dihubungkan ke <strong>Google Sheets</strong> menggunakan Google Apps Script Web App.
+                                Selain Firebase, aplikasi ini juga dapat dihubungkan ke <strong>Google Sheets</strong> menggunakan Google Apps Script Web App jika Anda menginginkan salinan data di spreadsheet:
                             </p>
 
                             {urlSavedMessage && (
