@@ -81,12 +81,21 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
     }, [rencanaList]);
 
     // Active Santri Object (for Santri role or selected in Admin view)
-    const currentSantri = isSantri
-        ? santriList.find(s => s.nama.toLowerCase().includes(user?.nama?.toLowerCase() || '')) || santriList[0]
-        : santriList[0];
+    const currentSantri: Santri = (isSantri
+        ? santriList.find(s => 
+            (user?.id && (s.id === user.id || s.nis === user.id || s.nis.toLowerCase() === user.id.toLowerCase())) ||
+            (user?.nama && (s.nama.toLowerCase() === user.nama.toLowerCase() || s.nama.toLowerCase().includes(user.nama.toLowerCase())))
+          )
+        : null) || santriList[0] || INITIAL_SANTRI[0];
 
-    const [selectedJuzSantriId, setSelectedJuzSantriId] = useState<string>(currentSantri?.id || 's-1');
-    const activeJuzSantri = santriList.find(s => s.id === selectedJuzSantriId) || currentSantri || santriList[0];
+    const [selectedJuzSantriId, setSelectedJuzSantriId] = useState<string>(() => currentSantri?.id || 's-1');
+    const activeJuzSantri = santriList.find(s => s.id === selectedJuzSantriId) || currentSantri || santriList[0] || INITIAL_SANTRI[0];
+
+    useEffect(() => {
+        if (isSantri && currentSantri?.id) {
+            setSelectedJuzSantriId(currentSantri.id);
+        }
+    }, [isSantri, currentSantri?.id]);
 
     // Filters
     const [searchQuery, setSearchQuery] = useState('');
@@ -154,6 +163,24 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
     const [inputUrl, setInputUrl] = useState(apiUrl);
     const [urlSavedMessage, setUrlSavedMessage] = useState('');
     const [testConnectionStatus, setTestConnectionStatus] = useState<{ loading: boolean; success?: boolean; message?: string } | null>(null);
+
+    // Modal Reset Data Confirmation
+    const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+    const [resetSuccessMessage, setResetSuccessMessage] = useState('');
+
+    const handleExecuteReset = () => {
+        setSantriList(INITIAL_SANTRI);
+        setSetoranList(INITIAL_SETORAN);
+        setJurnalList(INITIAL_JURNAL_BELAJAR);
+        setRencanaList(INITIAL_RENCANA_SETORAN);
+        localStorage.removeItem('darul_kamal_santri_list');
+        localStorage.removeItem('darul_kamal_setoran_list');
+        localStorage.removeItem('darul_kamal_jurnal_list');
+        localStorage.removeItem('darul_kamal_rencana_list');
+        setIsResetModalOpen(false);
+        setResetSuccessMessage('Seluruh data santri, setoran, jurnal belajar, dan peta 30 juz berhasil dikembalikan ke bawaan.');
+        setTimeout(() => setResetSuccessMessage(''), 4000);
+    };
 
     // Current santri 30 Juz progress
     const activeJuzProgressMap = activeJuzSantri?.juzProgress || createDefaultJuzProgress(activeJuzSantri?.totalHafalanJuz || 0);
@@ -690,7 +717,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
 
                         {activeTab === 'hafalan' && (
                             <button
-                                onClick={() => window.print()}
+                                onClick={() => {
+                                    try {
+                                        window.print();
+                                    } catch {
+                                        console.warn('Cetak lembar pantau tidak didukung di frame ini.');
+                                    }
+                                }}
                                 className="bg-emerald-800 hover:bg-emerald-900 text-white px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition"
                             >
                                 <i className="fas fa-print"></i>
@@ -1742,23 +1775,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                                 Jika ingin mengembalikan data santri, setoran, jurnal belajar, dan peta 30 juz ke data contoh bawaan:
                             </p>
                             <button
-                                onClick={() => {
-                                    if (confirm('Yakin ingin mereset seluruh data santri, setoran, jurnal belajar, dan peta 30 juz ke bawaan?')) {
-                                        setSantriList(INITIAL_SANTRI);
-                                        setSetoranList(INITIAL_SETORAN);
-                                        setJurnalList(INITIAL_JURNAL_BELAJAR);
-                                        setRencanaList(INITIAL_RENCANA_SETORAN);
-                                        localStorage.removeItem('darul_kamal_santri_list');
-                                        localStorage.removeItem('darul_kamal_setoran_list');
-                                        localStorage.removeItem('darul_kamal_jurnal_list');
-                                        localStorage.removeItem('darul_kamal_rencana_list');
-                                        alert('Data berhasil direset ke bawaan.');
-                                    }
-                                }}
-                                className="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 px-4 py-2 rounded-xl text-xs font-bold transition"
+                                type="button"
+                                onClick={() => setIsResetModalOpen(true)}
+                                className="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
                             >
-                                Reset Semua Data ke Bawaan
+                                <i className="fas fa-undo"></i>
+                                <span>Reset Semua Data ke Bawaan</span>
                             </button>
+
+                            {resetSuccessMessage && (
+                                <div className="bg-emerald-50 text-emerald-800 border border-emerald-200 p-3 rounded-xl text-xs mt-3 flex items-center gap-2">
+                                    <i className="fas fa-check-circle text-emerald-600"></i>
+                                    <span>{resetSuccessMessage}</span>
+                                </div>
+                            )}
                         </div>
 
                         {/* Panduan Code.gs */}
@@ -2549,6 +2579,39 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL 7: KONFIRMASI RESET DATA */}
+            {isResetModalOpen && (
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl animate-scale-up border border-gray-100">
+                        <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-3">
+                            <i className="fas fa-exclamation-triangle text-xl"></i>
+                        </div>
+                        <h3 className="text-center font-bold text-gray-900 text-base mb-1">
+                            Konfirmasi Reset Data
+                        </h3>
+                        <p className="text-center text-xs text-gray-600 leading-relaxed mb-5">
+                            Apakah Anda yakin ingin mengembalikan seluruh data santri, setoran, jurnal mandiri, dan progres 30 juz ke data awal bawaan pesantren?
+                        </p>
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setIsResetModalOpen(false)}
+                                className="flex-1 py-2.5 px-3 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 text-xs font-semibold transition"
+                            >
+                                Batal
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleExecuteReset}
+                                className="flex-1 py-2.5 px-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-xs transition"
+                            >
+                                Ya, Reset Data
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
