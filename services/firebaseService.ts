@@ -6,7 +6,8 @@ import {
     collection, 
     onSnapshot, 
     setDoc, 
-    getDocs 
+    getDocs,
+    deleteDoc
 } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 import { Santri, SetoranRecord, JurnalBelajarSantri, RencanaSetoran } from '../types';
@@ -171,5 +172,38 @@ export async function syncRencanaDoc(rencana: RencanaSetoran) {
         await setDoc(doc(db, 'rencana', rencana.id), rencana);
     } catch (e) {
         console.warn("Firestore save rencana error:", e);
+    }
+}
+
+// Delete Helpers
+export async function deleteSantriDoc(id: string) {
+    try {
+        await deleteDoc(doc(db, 'santri', id));
+    } catch (e) {
+        console.warn("Firestore delete santri error:", e);
+    }
+}
+
+export async function deleteSetoranDoc(id: string) {
+    try {
+        await deleteDoc(doc(db, 'setoran', id));
+    } catch (e) {
+        console.warn("Firestore delete setoran error:", e);
+    }
+}
+
+export async function deleteJurnalDoc(id: string) {
+    try {
+        await deleteDoc(doc(db, 'jurnal', id));
+    } catch (e) {
+        console.warn("Firestore delete jurnal error:", e);
+    }
+}
+
+export async function deleteRencanaDoc(id: string) {
+    try {
+        await deleteDoc(doc(db, 'rencana', id));
+    } catch (e) {
+        console.warn("Firestore delete rencana error:", e);
     }
 }

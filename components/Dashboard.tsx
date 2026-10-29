@@ -13,6 +13,10 @@ import {
     syncSetoranDoc, 
     syncJurnalDoc, 
     syncRencanaDoc,
+    deleteSantriDoc,
+    deleteSetoranDoc,
+    deleteJurnalDoc,
+    deleteRencanaDoc,
     testConnection
 } from '../services/firebaseService';
 
@@ -206,6 +210,62 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
     const [newHalaqah, setNewHalaqah] = useState('Halaqah Abu Bakar Ash-Shiddiq');
     const [newMusyrif, setNewMusyrif] = useState(user?.nama || 'Ustadz Abdullah');
     const [newTotalJuz, setNewTotalJuz] = useState('0');
+    const [newStatus, setNewStatus] = useState<'Aktif' | 'Izin' | 'Mutakharij'>('Aktif');
+
+    // Filter Status Santri (Admin/Ustadz)
+    const [filterSantriStatus, setFilterSantriStatus] = useState<'Semua' | 'Aktif' | 'Izin' | 'Mutakharij'>('Semua');
+
+    // Admin: Edit & Delete Santri
+    const [isEditSantriOpen, setIsEditSantriOpen] = useState(false);
+    const [editSantriId, setEditSantriId] = useState('');
+    const [editNis, setEditNis] = useState('');
+    const [editNama, setEditNama] = useState('');
+    const [editKelas, setEditKelas] = useState('');
+    const [editHalaqah, setEditHalaqah] = useState('');
+    const [editMusyrif, setEditMusyrif] = useState('');
+    const [editStatus, setEditStatus] = useState<'Aktif' | 'Izin' | 'Mutakharij'>('Aktif');
+    const [editTotalJuz, setEditTotalJuz] = useState('0');
+    const [editTargetKhatam, setEditTargetKhatam] = useState('');
+    const [deleteSantriTarget, setDeleteSantriTarget] = useState<Santri | null>(null);
+
+    // Ustadz: Edit & Delete Setoran
+    const [isEditSetoranOpen, setIsEditSetoranOpen] = useState(false);
+    const [editSetoranId, setEditSetoranId] = useState('');
+    const [editSetoranSantriId, setEditSetoranSantriId] = useState('');
+    const [editSetoranJenis, setEditSetoranJenis] = useState<'Ziyadah' | "Muroja'ah">('Ziyadah');
+    const [editSetoranSurahNomor, setEditSetoranSurahNomor] = useState<number>(1);
+    const [editSetoranAyatAwal, setEditSetoranAyatAwal] = useState('1');
+    const [editSetoranAyatAkhir, setEditSetoranAyatAkhir] = useState('7');
+    const [editSetoranJuz, setEditSetoranJuz] = useState('1');
+    const [editSetoranNilai, setEditSetoranNilai] = useState<'A (Mumtaz)' | 'B (Jayyid Jiddan)' | 'C (Jayyid)' | 'D (Maqbul)'>('A (Mumtaz)');
+    const [editSetoranCatatan, setEditSetoranCatatan] = useState('');
+    const [deleteSetoranTarget, setDeleteSetoranTarget] = useState<SetoranRecord | null>(null);
+
+    // Santri: Edit & Delete Jurnal Belajar Mandiri
+    const [isEditJurnalOpen, setIsEditJurnalOpen] = useState(false);
+    const [editJurnalId, setEditJurnalId] = useState('');
+    const [editJurnalKegiatan, setEditJurnalKegiatan] = useState<'Ziyadah Mandiri' | "Muroja'ah Mandiri" | 'Talaqqi Simakan' | 'Kajian Tajwid & Makhorij'>('Ziyadah Mandiri');
+    const [editJurnalSurahNomor, setEditJurnalSurahNomor] = useState<number>(1);
+    const [editJurnalAyatAwal, setEditJurnalAyatAwal] = useState('1');
+    const [editJurnalAyatAkhir, setEditJurnalAyatAkhir] = useState('10');
+    const [editJurnalJuz, setEditJurnalJuz] = useState('1');
+    const [editJurnalDurasi, setEditJurnalDurasi] = useState('30');
+    const [editJurnalKelancaran, setEditJurnalKelancaran] = useState<'Sangat Lancar' | 'Cukup Lancar' | 'Masih Terbata' | 'Butuh Pendampingan'>('Sangat Lancar');
+    const [editJurnalCatatanSulit, setEditJurnalCatatanSulit] = useState('');
+    const [deleteJurnalTarget, setDeleteJurnalTarget] = useState<JurnalBelajarSantri | null>(null);
+
+    // Santri: Edit & Delete Rencana Setoran
+    const [isEditRencanaOpen, setIsEditRencanaOpen] = useState(false);
+    const [editRencanaId, setEditRencanaId] = useState('');
+    const [editRencanaTanggal, setEditRencanaTanggal] = useState('');
+    const [editRencanaWaktu, setEditRencanaWaktu] = useState<'Ba\'da Subuh' | 'Ba\'da Ashar' | 'Ba\'da Maghrib' | 'Ba\'da Isya'>('Ba\'da Subuh');
+    const [editRencanaJenis, setEditRencanaJenis] = useState<'Ziyadah' | "Muroja'ah">('Ziyadah');
+    const [editRencanaSurahNomor, setEditRencanaSurahNomor] = useState<number>(1);
+    const [editRencanaAyatAwal, setEditRencanaAyatAwal] = useState('1');
+    const [editRencanaAyatAkhir, setEditRencanaAyatAkhir] = useState('20');
+    const [editRencanaJuz, setEditRencanaJuz] = useState('1');
+    const [editRencanaCatatan, setEditRencanaCatatan] = useState('');
+    const [deleteRencanaTarget, setDeleteRencanaTarget] = useState<RencanaSetoran | null>(null);
 
     // Modal Bookmark Update
     const [isBookmarkModalOpen, setIsBookmarkModalOpen] = useState(false);
@@ -464,7 +524,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
             musyrif: newMusyrif,
             totalHafalanJuz: totalJuzInt,
             suratTerakhir: 'Memulai juz awal',
-            status: 'Aktif',
+            status: newStatus,
             juzProgress: createDefaultJuzProgress(totalJuzInt),
             streakHari: 1,
             targetKhatam: 'Ramadhan 1448 H',
@@ -476,6 +536,201 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
         setIsAddSantriOpen(false);
         setNewNis('');
         setNewNama('');
+    };
+
+    // Admin Handlers: Edit & Delete Santri
+    const handleOpenEditSantri = (s: Santri) => {
+        setEditSantriId(s.id);
+        setEditNis(s.nis);
+        setEditNama(s.nama);
+        setEditKelas(s.kelas);
+        setEditHalaqah(s.halaqah);
+        setEditMusyrif(s.musyrif);
+        setEditStatus(s.status || 'Aktif');
+        setEditTotalJuz(String(s.totalHafalanJuz || 0));
+        setEditTargetKhatam(s.targetKhatam || 'Ramadhan 1448 H');
+        setIsEditSantriOpen(true);
+    };
+
+    const handleUpdateSantri = (e: React.FormEvent) => {
+        e.preventDefault();
+        const totalJuzInt = parseInt(editTotalJuz) || 0;
+        const updatedList = santriList.map(s => {
+            if (s.id === editSantriId) {
+                const updated: Santri = {
+                    ...s,
+                    nis: editNis.trim(),
+                    nama: editNama.trim(),
+                    kelas: editKelas.trim(),
+                    halaqah: editHalaqah.trim(),
+                    musyrif: editMusyrif.trim(),
+                    status: editStatus,
+                    totalHafalanJuz: totalJuzInt,
+                    targetKhatam: editTargetKhatam.trim(),
+                    juzProgress: s.juzProgress || createDefaultJuzProgress(totalJuzInt)
+                };
+                syncSantriDoc(updated);
+                return updated;
+            }
+            return s;
+        });
+        setSantriList(updatedList);
+        setIsEditSantriOpen(false);
+    };
+
+    const handleConfirmDeleteSantri = () => {
+        if (!deleteSantriTarget) return;
+        const targetId = deleteSantriTarget.id;
+        setSantriList(santriList.filter(s => s.id !== targetId));
+        deleteSantriDoc(targetId);
+        setDeleteSantriTarget(null);
+    };
+
+    // Ustadz Handlers: Edit & Delete Setoran
+    const handleOpenEditSetoran = (r: SetoranRecord) => {
+        setEditSetoranId(r.id);
+        setEditSetoranSantriId(r.santriId);
+        setEditSetoranJenis(r.jenis);
+        const surahObj = QURAN_SURAHS.find(s => s.nama.toLowerCase() === r.surat.toLowerCase()) || QURAN_SURAHS[0];
+        setEditSetoranSurahNomor(surahObj.nomor);
+        setEditSetoranAyatAwal(String(r.ayatAwal));
+        setEditSetoranAyatAkhir(String(r.ayatAkhir));
+        setEditSetoranJuz(String(r.juz));
+        setEditSetoranNilai(r.nilai);
+        setEditSetoranCatatan(r.catatan || '');
+        setIsEditSetoranOpen(true);
+    };
+
+    const handleUpdateSetoran = (e: React.FormEvent) => {
+        e.preventDefault();
+        const surahObj = QURAN_SURAHS.find(s => s.nomor === editSetoranSurahNomor) || QURAN_SURAHS[0];
+        const targetSantri = santriList.find(s => s.id === editSetoranSantriId);
+
+        const updatedSetoranList = setoranList.map(item => {
+            if (item.id === editSetoranId) {
+                const updated: SetoranRecord = {
+                    ...item,
+                    santriId: editSetoranSantriId,
+                    santriNama: targetSantri?.nama || item.santriNama,
+                    jenis: editSetoranJenis,
+                    surat: surahObj.nama,
+                    ayatAwal: parseInt(editSetoranAyatAwal) || 1,
+                    ayatAkhir: parseInt(editSetoranAyatAkhir) || surahObj.ayat,
+                    juz: parseInt(editSetoranJuz) || surahObj.juz,
+                    nilai: editSetoranNilai,
+                    catatan: editSetoranCatatan.trim()
+                };
+                syncSetoranDoc(updated);
+                return updated;
+            }
+            return item;
+        });
+        setSetoranList(updatedSetoranList);
+        setIsEditSetoranOpen(false);
+    };
+
+    const handleConfirmDeleteSetoran = () => {
+        if (!deleteSetoranTarget) return;
+        const targetId = deleteSetoranTarget.id;
+        setSetoranList(setoranList.filter(s => s.id !== targetId));
+        deleteSetoranDoc(targetId);
+        setDeleteSetoranTarget(null);
+    };
+
+    // Santri Handlers: Edit & Delete Jurnal Belajar
+    const handleOpenEditJurnal = (j: JurnalBelajarSantri) => {
+        setEditJurnalId(j.id);
+        setEditJurnalKegiatan(j.kegiatan);
+        const surahObj = QURAN_SURAHS.find(s => s.nama.toLowerCase() === j.surat.toLowerCase()) || QURAN_SURAHS[0];
+        setEditJurnalSurahNomor(surahObj.nomor);
+        setEditJurnalAyatAwal(String(j.ayatAwal));
+        setEditJurnalAyatAkhir(String(j.ayatAkhir));
+        setEditJurnalJuz(String(j.juz));
+        setEditJurnalDurasi(String(j.durasiMenit));
+        setEditJurnalKelancaran(j.tingkatKelancaran);
+        setEditJurnalCatatanSulit(j.catatanAyatSulit || '');
+        setIsEditJurnalOpen(true);
+    };
+
+    const handleUpdateJurnal = (e: React.FormEvent) => {
+        e.preventDefault();
+        const surahObj = QURAN_SURAHS.find(s => s.nomor === editJurnalSurahNomor) || QURAN_SURAHS[0];
+        const updatedJurnalList = jurnalList.map(j => {
+            if (j.id === editJurnalId) {
+                const updated: JurnalBelajarSantri = {
+                    ...j,
+                    kegiatan: editJurnalKegiatan,
+                    surat: surahObj.nama,
+                    ayatAwal: parseInt(editJurnalAyatAwal) || 1,
+                    ayatAkhir: parseInt(editJurnalAyatAkhir) || surahObj.ayat,
+                    juz: parseInt(editJurnalJuz) || surahObj.juz,
+                    durasiMenit: parseInt(editJurnalDurasi) || 30,
+                    tingkatKelancaran: editJurnalKelancaran,
+                    catatanAyatSulit: editJurnalCatatanSulit.trim()
+                };
+                syncJurnalDoc(updated);
+                return updated;
+            }
+            return j;
+        });
+        setJurnalList(updatedJurnalList);
+        setIsEditJurnalOpen(false);
+    };
+
+    const handleConfirmDeleteJurnal = () => {
+        if (!deleteJurnalTarget) return;
+        const targetId = deleteJurnalTarget.id;
+        setJurnalList(jurnalList.filter(j => j.id !== targetId));
+        deleteJurnalDoc(targetId);
+        setDeleteJurnalTarget(null);
+    };
+
+    // Santri Handlers: Edit & Delete Rencana Setoran
+    const handleOpenEditRencana = (r: RencanaSetoran) => {
+        setEditRencanaId(r.id);
+        setEditRencanaTanggal(r.tanggalTarget);
+        setEditRencanaWaktu(r.waktu);
+        setEditRencanaJenis(r.jenis);
+        const surahObj = QURAN_SURAHS.find(s => s.nama.toLowerCase() === r.surat.toLowerCase()) || QURAN_SURAHS[0];
+        setEditRencanaSurahNomor(surahObj.nomor);
+        setEditRencanaAyatAwal(String(r.ayatAwal));
+        setEditRencanaAyatAkhir(String(r.ayatAkhir));
+        setEditRencanaJuz(String(r.juz));
+        setEditRencanaCatatan(r.catatanSantri || '');
+        setIsEditRencanaOpen(true);
+    };
+
+    const handleUpdateRencana = (e: React.FormEvent) => {
+        e.preventDefault();
+        const surahObj = QURAN_SURAHS.find(s => s.nomor === editRencanaSurahNomor) || QURAN_SURAHS[0];
+        const updatedRencanaList = rencanaList.map(r => {
+            if (r.id === editRencanaId) {
+                const updated: RencanaSetoran = {
+                    ...r,
+                    tanggalTarget: editRencanaTanggal,
+                    waktu: editRencanaWaktu,
+                    jenis: editRencanaJenis,
+                    surat: surahObj.nama,
+                    ayatAwal: parseInt(editRencanaAyatAwal) || 1,
+                    ayatAkhir: parseInt(editRencanaAyatAkhir) || 20,
+                    juz: parseInt(editRencanaJuz) || surahObj.juz,
+                    catatanSantri: editRencanaCatatan.trim()
+                };
+                syncRencanaDoc(updated);
+                return updated;
+            }
+            return r;
+        });
+        setRencanaList(updatedRencanaList);
+        setIsEditRencanaOpen(false);
+    };
+
+    const handleConfirmDeleteRencana = () => {
+        if (!deleteRencanaTarget) return;
+        const targetId = deleteRencanaTarget.id;
+        setRencanaList(rencanaList.filter(r => r.id !== targetId));
+        deleteRencanaDoc(targetId);
+        setDeleteRencanaTarget(null);
     };
 
     const handleTestBackend = async () => {
@@ -534,11 +789,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
     };
 
     // Filtered lists
-    const filteredSantri = santriList.filter(s => 
-        s.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        s.nis.includes(searchQuery) ||
-        s.halaqah.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredSantri = santriList.filter(s => {
+        const matchesQuery = s.nama.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            s.nis.includes(searchQuery) ||
+            s.halaqah.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesStatus = filterSantriStatus === 'Semua' || s.status === filterSantriStatus;
+        return matchesQuery && matchesStatus;
+    });
 
     const filteredSetoran = setoranList.filter(item => {
         const matchesJenis = filterJenis === 'Semua' || item.jenis === filterJenis;
@@ -1094,6 +1351,24 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                                                 }`}>
                                                     {jrn.tingkatKelancaran}
                                                 </span>
+                                                {(isSantri || isAdmin) && (
+                                                    <div className="flex items-center gap-1.5 ml-1">
+                                                        <button
+                                                            onClick={() => handleOpenEditJurnal(jrn)}
+                                                            className="text-gray-500 hover:text-emerald-700 bg-gray-100 hover:bg-emerald-50 p-1.5 rounded-lg transition"
+                                                            title="Edit Catatan Jurnal"
+                                                        >
+                                                            <i className="fas fa-edit text-xs"></i>
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setDeleteJurnalTarget(jrn)}
+                                                            className="text-gray-500 hover:text-red-700 bg-gray-100 hover:bg-red-50 p-1.5 rounded-lg transition"
+                                                            title="Hapus Jurnal"
+                                                        >
+                                                            <i className="fas fa-trash-alt text-xs"></i>
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
 
@@ -1169,6 +1444,24 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                                                 }`}>
                                                     {rcn.status}
                                                 </span>
+                                                {(isSantri || isAdmin) && (
+                                                    <div className="flex items-center gap-1.5 ml-1">
+                                                        <button
+                                                            onClick={() => handleOpenEditRencana(rcn)}
+                                                            className="text-gray-500 hover:text-teal-700 bg-gray-100 hover:bg-teal-50 p-1.5 rounded-lg transition"
+                                                            title="Edit Rencana Target"
+                                                        >
+                                                            <i className="fas fa-edit text-xs"></i>
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setDeleteRencanaTarget(rcn)}
+                                                            className="text-gray-500 hover:text-red-700 bg-gray-100 hover:bg-red-50 p-1.5 rounded-lg transition"
+                                                            title="Batalkan Rencana"
+                                                        >
+                                                            <i className="fas fa-trash-alt text-xs"></i>
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
 
@@ -1177,14 +1470,24 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                                                 Catatan santri: "{rcn.catatanSantri || 'Siap disetorkan'}"
                                             </p>
 
-                                            {(isAdmin || isUstadz) && rcn.status === 'Diajukan' && (
+                                            {(isAdmin || isUstadz) && (
                                                 <div className="flex gap-2 self-end sm:self-auto">
-                                                    <button
-                                                        onClick={() => handleApproveRencana(rcn.id, 'Disetujui Musyrif')}
-                                                        className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded-lg text-xs font-semibold"
-                                                    >
-                                                        Setujui Jadwal
-                                                    </button>
+                                                    {rcn.status === 'Diajukan' && (
+                                                        <button
+                                                            onClick={() => handleApproveRencana(rcn.id, 'Disetujui Musyrif')}
+                                                            className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1"
+                                                        >
+                                                            <i className="fas fa-check"></i> Setujui Jadwal
+                                                        </button>
+                                                    )}
+                                                    {rcn.status === 'Disetujui Musyrif' && (
+                                                        <button
+                                                            onClick={() => handleApproveRencana(rcn.id, 'Selesai Disetorkan')}
+                                                            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1"
+                                                        >
+                                                            <i className="fas fa-check-double"></i> Tandai Selesai
+                                                        </button>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
@@ -1534,16 +1837,34 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                 {/* TAB 5: DATA SANTRI (Admin / Ustadz) */}
                 {activeTab === 'santri' && (
                     <div className="space-y-4">
-                        <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                            <div className="relative flex-1 max-w-md">
-                                <i className="fas fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
-                                <input
-                                    type="text"
-                                    placeholder="Cari santri berdasarkan Nama, NIS, atau Halaqah..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                />
+                        <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-1">
+                                <div className="relative flex-1 max-w-md">
+                                    <i className="fas fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                                    <input
+                                        type="text"
+                                        placeholder="Cari santri berdasarkan Nama, NIS, atau Halaqah..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                    />
+                                </div>
+                                <div className="flex items-center gap-1.5 bg-gray-50 p-1 rounded-xl border border-gray-200 text-xs">
+                                    <span className="text-[11px] font-bold text-gray-500 px-1.5">Status:</span>
+                                    {(['Semua', 'Aktif', 'Izin', 'Mutakharij'] as const).map((st) => (
+                                        <button
+                                            key={st}
+                                            onClick={() => setFilterSantriStatus(st)}
+                                            className={`px-2.5 py-1 rounded-lg font-semibold transition ${
+                                                filterSantriStatus === st
+                                                    ? 'bg-emerald-700 text-white shadow-2xs'
+                                                    : 'text-gray-600 hover:text-gray-900'
+                                            }`}
+                                        >
+                                            {st}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                             <div className="flex items-center gap-3">
                                 <span className="text-xs text-gray-500 font-medium">
@@ -1566,9 +1887,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                                     <div>
                                         <div className="flex items-start justify-between">
                                             <div>
-                                                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
-                                                    NIS: {santri.nis}
-                                                </span>
+                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
+                                                        NIS: {santri.nis}
+                                                    </span>
+                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                                                        santri.status === 'Aktif' ? 'bg-emerald-100 text-emerald-800' :
+                                                        santri.status === 'Izin' ? 'bg-amber-100 text-amber-800' :
+                                                        'bg-blue-100 text-blue-800'
+                                                    }`}>
+                                                        {santri.status || 'Aktif'}
+                                                    </span>
+                                                </div>
                                                 <h4 className="font-bold text-gray-900 text-sm mt-1.5">{santri.nama}</h4>
                                                 <p className="text-xs text-gray-500">{santri.kelas}</p>
                                             </div>
@@ -1586,6 +1916,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                                             <div className="flex justify-between text-gray-600">
                                                 <span>Musyrif:</span>
                                                 <span className="font-semibold text-gray-800">{santri.musyrif}</span>
+                                            </div>
+                                            <div className="flex justify-between text-gray-600">
+                                                <span>Target Khatam:</span>
+                                                <span className="font-semibold text-amber-700">{santri.targetKhatam || 'Ramadhan 1448 H'}</span>
                                             </div>
                                             <div className="flex justify-between text-gray-600">
                                                 <span>Surat Terakhir:</span>
@@ -1608,27 +1942,49 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                                         </div>
                                     </div>
 
-                                    <div className="mt-4 pt-2 flex gap-2">
-                                        <button
-                                            onClick={() => {
-                                                setSelectedJuzSantriId(santri.id);
-                                                setActiveTab('hafalan');
-                                            }}
-                                            className="flex-1 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-semibold py-2 rounded-xl border border-amber-200 transition flex items-center justify-center gap-1.5"
-                                        >
-                                            <i className="fas fa-book-quran text-amber-700"></i>
-                                            <span>Buka Peta 30 Juz</span>
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                setSelectedSantriId(santri.id);
-                                                setIsAddSetoranOpen(true);
-                                            }}
-                                            className="px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs rounded-xl border border-emerald-200"
-                                            title="Input Setoran Resmi"
-                                        >
-                                            <i className="fas fa-plus"></i>
-                                        </button>
+                                    <div className="mt-4 pt-3 border-t border-gray-100 flex flex-col gap-2">
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedJuzSantriId(santri.id);
+                                                    setActiveTab('hafalan');
+                                                }}
+                                                className="flex-1 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-semibold py-2 rounded-xl border border-amber-200 transition flex items-center justify-center gap-1.5"
+                                            >
+                                                <i className="fas fa-book-quran text-amber-700"></i>
+                                                <span>Peta 30 Juz</span>
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedSantriId(santri.id);
+                                                    setIsAddSetoranOpen(true);
+                                                }}
+                                                className="px-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs rounded-xl border border-emerald-200"
+                                                title="Input Setoran Resmi"
+                                            >
+                                                <i className="fas fa-plus"></i> Setor
+                                            </button>
+                                        </div>
+
+                                        {(isAdmin || isUstadz) && (
+                                            <div className="flex gap-2 pt-1">
+                                                <button
+                                                    onClick={() => handleOpenEditSantri(santri)}
+                                                    className="flex-1 bg-gray-100 hover:bg-emerald-50 hover:text-emerald-800 text-gray-700 text-xs font-semibold py-1.5 rounded-xl border border-gray-200 transition flex items-center justify-center gap-1"
+                                                >
+                                                    <i className="fas fa-edit text-xs"></i> Edit Profil
+                                                </button>
+                                                {isAdmin && (
+                                                    <button
+                                                        onClick={() => setDeleteSantriTarget(santri)}
+                                                        className="px-3 bg-gray-100 hover:bg-red-50 hover:text-red-700 text-gray-500 text-xs font-semibold py-1.5 rounded-xl border border-gray-200 transition"
+                                                        title="Hapus Data Santri"
+                                                    >
+                                                        <i className="fas fa-trash-alt text-xs"></i>
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             ))}
@@ -1725,6 +2081,24 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                                                 <span className="bg-amber-100 text-amber-900 px-2.5 py-1 rounded-full text-xs font-bold">
                                                     {record.nilai}
                                                 </span>
+                                                {(isAdmin || isUstadz) && (
+                                                    <div className="flex items-center gap-1.5 ml-1">
+                                                        <button
+                                                            onClick={() => handleOpenEditSetoran(record)}
+                                                            className="text-gray-500 hover:text-emerald-700 bg-gray-100 hover:bg-emerald-50 p-1.5 rounded-lg transition"
+                                                            title="Edit Catatan Setoran"
+                                                        >
+                                                            <i className="fas fa-edit text-xs"></i>
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setDeleteSetoranTarget(record)}
+                                                            className="text-gray-500 hover:text-red-700 bg-gray-100 hover:bg-red-50 p-1.5 rounded-lg transition"
+                                                            title="Hapus Catatan Setoran"
+                                                        >
+                                                            <i className="fas fa-trash-alt text-xs"></i>
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
 
@@ -2674,14 +3048,28 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                                 />
                             </div>
 
-                            <div>
-                                <label className="block font-bold text-gray-700 mb-1">Ustadz Musyrif Pembina</label>
-                                <input 
-                                    type="text" 
-                                    value={newMusyrif}
-                                    onChange={(e) => setNewMusyrif(e.target.value)}
-                                    className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                />
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Status Santri</label>
+                                    <select
+                                        value={newStatus}
+                                        onChange={(e) => setNewStatus(e.target.value as any)}
+                                        className="w-full border border-gray-300 p-2.5 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-emerald-500 bg-white"
+                                    >
+                                        <option value="Aktif">Aktif</option>
+                                        <option value="Izin">Izin</option>
+                                        <option value="Mutakharij">Mutakharij</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Ustadz Pembina</label>
+                                    <input 
+                                        type="text" 
+                                        value={newMusyrif}
+                                        onChange={(e) => setNewMusyrif(e.target.value)}
+                                        className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                    />
+                                </div>
                             </div>
 
                             <div className="flex justify-end gap-2 pt-3 border-t border-gray-200">
@@ -2731,6 +3119,708 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                                 className="flex-1 py-2.5 px-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-xs transition"
                             >
                                 Ya, Reset Data
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL 8: EDIT PROFIL SANTRI (ADMIN / USTADZ) */}
+            {isEditSantriOpen && (
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto animate-scale-up">
+                        <div className="flex justify-between items-center pb-3 border-b border-gray-200 mb-4">
+                            <h3 className="font-bold text-gray-900 text-base flex items-center gap-2">
+                                <i className="fas fa-user-edit text-emerald-700"></i> Edit Data Santri
+                            </h3>
+                            <button 
+                                onClick={() => setIsEditSantriOpen(false)}
+                                className="text-gray-400 hover:text-gray-600 w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-100"
+                            >
+                                <i className="fas fa-times"></i>
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleUpdateSantri} className="space-y-3 text-xs">
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Nomor Induk (NIS)</label>
+                                    <input 
+                                        type="text" 
+                                        value={editNis}
+                                        onChange={(e) => setEditNis(e.target.value)}
+                                        className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Status Santri</label>
+                                    <select
+                                        value={editStatus}
+                                        onChange={(e) => setEditStatus(e.target.value as any)}
+                                        className="w-full border border-gray-300 p-2.5 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-emerald-500 bg-white"
+                                    >
+                                        <option value="Aktif">Aktif</option>
+                                        <option value="Izin">Izin</option>
+                                        <option value="Mutakharij">Mutakharij (Lulus)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block font-bold text-gray-700 mb-1">Nama Lengkap Santri</label>
+                                <input 
+                                    type="text" 
+                                    value={editNama}
+                                    onChange={(e) => setEditNama(e.target.value)}
+                                    className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500"
+                                    required
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Kelas</label>
+                                    <input 
+                                        type="text" 
+                                        value={editKelas}
+                                        onChange={(e) => setEditKelas(e.target.value)}
+                                        className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Total Hafalan Mutqin (Juz)</label>
+                                    <input 
+                                        type="number" 
+                                        min="0"
+                                        max="30"
+                                        value={editTotalJuz}
+                                        onChange={(e) => setEditTotalJuz(e.target.value)}
+                                        className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block font-bold text-gray-700 mb-1">Kelompok Halaqah</label>
+                                <input 
+                                    type="text" 
+                                    value={editHalaqah}
+                                    onChange={(e) => setEditHalaqah(e.target.value)}
+                                    className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block font-bold text-gray-700 mb-1">Ustadz Musyrif Pembina</label>
+                                <input 
+                                    type="text" 
+                                    value={editMusyrif}
+                                    onChange={(e) => setEditMusyrif(e.target.value)}
+                                    className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block font-bold text-gray-700 mb-1">Target Khatam</label>
+                                <input 
+                                    type="text" 
+                                    value={editTargetKhatam}
+                                    onChange={(e) => setEditTargetKhatam(e.target.value)}
+                                    placeholder="Contoh: Ramadhan 1448 H"
+                                    className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500"
+                                />
+                            </div>
+
+                            <div className="flex justify-end gap-2 pt-3 border-t border-gray-200">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsEditSantriOpen(false)}
+                                    className="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 font-semibold"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold shadow-xs transition"
+                                >
+                                    Simpan Perubahan
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL 9: KONFIRMASI HAPUS SANTRI (ADMIN) */}
+            {deleteSantriTarget && (
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl animate-scale-up border border-gray-100">
+                        <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-3">
+                            <i className="fas fa-user-times text-xl"></i>
+                        </div>
+                        <h3 className="text-center font-bold text-gray-900 text-base mb-1">
+                            Hapus Data Santri
+                        </h3>
+                        <p className="text-center text-xs text-gray-600 leading-relaxed mb-5">
+                            Apakah Anda yakin ingin menghapus data santri <strong>{deleteSantriTarget.nama}</strong> (NIS: {deleteSantriTarget.nis})? Tindakan ini akan menghapus data dari sistem dan database cloud.
+                        </p>
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setDeleteSantriTarget(null)}
+                                className="flex-1 py-2.5 px-3 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 text-xs font-semibold transition"
+                            >
+                                Batal
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleConfirmDeleteSantri}
+                                className="flex-1 py-2.5 px-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-xs transition"
+                            >
+                                Ya, Hapus Santri
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL 10: EDIT SETORAN RESMI (USTADZ / ADMIN) */}
+            {isEditSetoranOpen && (
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto animate-scale-up">
+                        <div className="flex justify-between items-center pb-3 border-b border-gray-200 mb-4">
+                            <h3 className="font-bold text-gray-800 text-base flex items-center gap-2">
+                                <i className="fas fa-edit text-emerald-700"></i> Edit Catatan Setoran Resmi
+                            </h3>
+                            <button 
+                                onClick={() => setIsEditSetoranOpen(false)}
+                                className="text-gray-400 hover:text-gray-600 w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-100"
+                            >
+                                <i className="fas fa-times"></i>
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleUpdateSetoran} className="space-y-3.5 text-xs">
+                            <div>
+                                <label className="block font-bold text-gray-700 mb-1">Santri</label>
+                                <select 
+                                    value={editSetoranSantriId}
+                                    onChange={(e) => setEditSetoranSantriId(e.target.value)}
+                                    className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 bg-white"
+                                >
+                                    {santriList.map(s => (
+                                        <option key={s.id} value={s.id}>
+                                            {s.nis} - {s.nama} ({s.halaqah})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Jenis Setoran</label>
+                                    <select 
+                                        value={editSetoranJenis}
+                                        onChange={(e) => setEditSetoranJenis(e.target.value as any)}
+                                        className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 bg-white"
+                                    >
+                                        <option value="Ziyadah">Ziyadah (Hafalan Baru)</option>
+                                        <option value="Muroja'ah">Muroja'ah (Pengulangan)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Juz</label>
+                                    <input 
+                                        type="number" 
+                                        min="1" 
+                                        max="30"
+                                        value={editSetoranJuz}
+                                        onChange={(e) => setEditSetoranJuz(e.target.value)}
+                                        className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500"
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block font-bold text-gray-700 mb-1">Nama Surat Al-Qur'an</label>
+                                <select
+                                    value={editSetoranSurahNomor}
+                                    onChange={(e) => {
+                                        const num = parseInt(e.target.value);
+                                        setEditSetoranSurahNomor(num);
+                                        const surah = QURAN_SURAHS.find(s => s.nomor === num);
+                                        if (surah) {
+                                            setEditSetoranJuz(String(surah.juz));
+                                        }
+                                    }}
+                                    className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 bg-white"
+                                >
+                                    {QURAN_SURAHS.map(s => (
+                                        <option key={s.nomor} value={s.nomor}>
+                                            {s.nomor}. {s.nama} ({s.ayat} ayat, Juz {s.juz})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Ayat Awal</label>
+                                    <input 
+                                        type="number" 
+                                        min="1"
+                                        value={editSetoranAyatAwal}
+                                        onChange={(e) => setEditSetoranAyatAwal(e.target.value)}
+                                        className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Ayat Akhir</label>
+                                    <input 
+                                        type="number" 
+                                        min="1"
+                                        value={editSetoranAyatAkhir}
+                                        onChange={(e) => setEditSetoranAyatAkhir(e.target.value)}
+                                        className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500"
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block font-bold text-gray-700 mb-1">Nilai / Predikat</label>
+                                <select 
+                                    value={editSetoranNilai}
+                                    onChange={(e) => setEditSetoranNilai(e.target.value as any)}
+                                    className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 bg-white"
+                                >
+                                    <option value="A (Mumtaz)">A (Mumtaz / Sempurna)</option>
+                                    <option value="B (Jayyid Jiddan)">B (Jayyid Jiddan / Baik Sekali)</option>
+                                    <option value="C (Jayyid)">C (Jayyid / Baik)</option>
+                                    <option value="D (Maqbul)">D (Maqbul / Cukup)</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block font-bold text-gray-700 mb-1">Catatan Tajwid / Makhorijul Huruf</label>
+                                <textarea 
+                                    rows={3}
+                                    value={editSetoranCatatan}
+                                    onChange={(e) => setEditSetoranCatatan(e.target.value)}
+                                    className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500"
+                                />
+                            </div>
+
+                            <div className="flex justify-end gap-2 pt-3 border-t border-gray-200">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsEditSetoranOpen(false)}
+                                    className="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 font-semibold"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold shadow-xs transition"
+                                >
+                                    Perbarui Setoran
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL 11: KONFIRMASI HAPUS SETORAN */}
+            {deleteSetoranTarget && (
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl animate-scale-up border border-gray-100">
+                        <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-3">
+                            <i className="fas fa-trash-alt text-xl"></i>
+                        </div>
+                        <h3 className="text-center font-bold text-gray-900 text-base mb-1">
+                            Hapus Catatan Setoran
+                        </h3>
+                        <p className="text-center text-xs text-gray-600 leading-relaxed mb-5">
+                            Apakah Anda yakin ingin menghapus catatan setoran <strong>Surat {deleteSetoranTarget.surat} ({deleteSetoranTarget.ayatAwal}-{deleteSetoranTarget.ayatAkhir})</strong> milik <strong>{deleteSetoranTarget.santriNama}</strong>?
+                        </p>
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setDeleteSetoranTarget(null)}
+                                className="flex-1 py-2.5 px-3 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 text-xs font-semibold transition"
+                            >
+                                Batal
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleConfirmDeleteSetoran}
+                                className="flex-1 py-2.5 px-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-xs transition"
+                            >
+                                Ya, Hapus Setoran
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL 12: EDIT JURNAL BELAJAR SANTRI */}
+            {isEditJurnalOpen && (
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto animate-scale-up">
+                        <div className="flex justify-between items-center pb-3 border-b border-gray-200 mb-4">
+                            <h3 className="font-bold text-gray-900 text-base flex items-center gap-2">
+                                <i className="fas fa-pen-fancy text-emerald-700"></i> Edit Jurnal Belajar Mandiri
+                            </h3>
+                            <button 
+                                onClick={() => setIsEditJurnalOpen(false)}
+                                className="text-gray-400 hover:text-gray-600 w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-100"
+                            >
+                                <i className="fas fa-times"></i>
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleUpdateJurnal} className="space-y-3.5 text-xs">
+                            <div>
+                                <label className="block font-bold text-gray-700 mb-1">Jenis Aktivitas Belajar</label>
+                                <select 
+                                    value={editJurnalKegiatan}
+                                    onChange={(e) => setEditJurnalKegiatan(e.target.value as any)}
+                                    className="w-full border border-gray-300 p-2.5 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-emerald-500 bg-white"
+                                >
+                                    <option value="Ziyadah Mandiri">Ziyadah Mandiri (Menghafal Baru)</option>
+                                    <option value="Muroja'ah Mandiri">Muroja'ah Mandiri (Mengulang)</option>
+                                    <option value="Talaqqi Simakan">Talaqqi Simakan (Bersama Teman)</option>
+                                    <option value="Kajian Tajwid & Makhorij">Kajian Tajwid &amp; Makhorij</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block font-bold text-gray-700 mb-1">Surat Al-Qur'an</label>
+                                <select
+                                    value={editJurnalSurahNomor}
+                                    onChange={(e) => {
+                                        const num = parseInt(e.target.value);
+                                        setEditJurnalSurahNomor(num);
+                                        const surah = QURAN_SURAHS.find(s => s.nomor === num);
+                                        if (surah) {
+                                            setEditJurnalJuz(String(surah.juz));
+                                        }
+                                    }}
+                                    className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 bg-white"
+                                >
+                                    {QURAN_SURAHS.map(s => (
+                                        <option key={s.nomor} value={s.nomor}>
+                                            {s.nomor}. {s.nama} ({s.ayat} ayat, Juz {s.juz})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-3">
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Ayat Awal</label>
+                                    <input 
+                                        type="number" 
+                                        min="1"
+                                        value={editJurnalAyatAwal}
+                                        onChange={(e) => setEditJurnalAyatAwal(e.target.value)}
+                                        className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Ayat Akhir</label>
+                                    <input 
+                                        type="number" 
+                                        min="1"
+                                        value={editJurnalAyatAkhir}
+                                        onChange={(e) => setEditJurnalAyatAkhir(e.target.value)}
+                                        className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Juz</label>
+                                    <input 
+                                        type="number" 
+                                        min="1"
+                                        max="30"
+                                        value={editJurnalJuz}
+                                        onChange={(e) => setEditJurnalJuz(e.target.value)}
+                                        className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500"
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Durasi Belajar (Menit)</label>
+                                    <input 
+                                        type="number" 
+                                        min="5"
+                                        step="5"
+                                        value={editJurnalDurasi}
+                                        onChange={(e) => setEditJurnalDurasi(e.target.value)}
+                                        className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Tingkat Kelancaran</label>
+                                    <select 
+                                        value={editJurnalKelancaran}
+                                        onChange={(e) => setEditJurnalKelancaran(e.target.value as any)}
+                                        className="w-full border border-gray-300 p-2.5 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-emerald-500 bg-white"
+                                    >
+                                        <option value="Sangat Lancar">Sangat Lancar</option>
+                                        <option value="Cukup Lancar">Cukup Lancar</option>
+                                        <option value="Masih Terbata">Masih Terbata</option>
+                                        <option value="Butuh Pendampingan">Butuh Pendampingan</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block font-bold text-gray-700 mb-1">Catatan Kesulitan / Ayat Mutasyabihat</label>
+                                <textarea 
+                                    rows={2}
+                                    value={editJurnalCatatanSulit}
+                                    onChange={(e) => setEditJurnalCatatanSulit(e.target.value)}
+                                    className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500"
+                                />
+                            </div>
+
+                            <div className="flex justify-end gap-2 pt-3 border-t border-gray-200">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsEditJurnalOpen(false)}
+                                    className="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 font-semibold"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold shadow-xs transition"
+                                >
+                                    Simpan Perubahan
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL 13: KONFIRMASI HAPUS JURNAL */}
+            {deleteJurnalTarget && (
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl animate-scale-up border border-gray-100">
+                        <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-3">
+                            <i className="fas fa-trash-alt text-xl"></i>
+                        </div>
+                        <h3 className="text-center font-bold text-gray-900 text-base mb-1">
+                            Hapus Catatan Jurnal
+                        </h3>
+                        <p className="text-center text-xs text-gray-600 leading-relaxed mb-5">
+                            Apakah Anda yakin ingin menghapus catatan aktivitas <strong>{deleteJurnalTarget.kegiatan}</strong> (Surat {deleteJurnalTarget.surat}) pada {deleteJurnalTarget.tanggal}?
+                        </p>
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setDeleteJurnalTarget(null)}
+                                className="flex-1 py-2.5 px-3 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 text-xs font-semibold transition"
+                            >
+                                Batal
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleConfirmDeleteJurnal}
+                                className="flex-1 py-2.5 px-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-xs transition"
+                            >
+                                Ya, Hapus Jurnal
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL 14: EDIT RENCANA SETORAN (SANTRI) */}
+            {isEditRencanaOpen && (
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto animate-scale-up">
+                        <div className="flex justify-between items-center pb-3 border-b border-gray-200 mb-4">
+                            <h3 className="font-bold text-gray-900 text-base flex items-center gap-2">
+                                <i className="fas fa-calendar-alt text-teal-700"></i> Edit Rencana Target Setoran
+                            </h3>
+                            <button 
+                                onClick={() => setIsEditRencanaOpen(false)}
+                                className="text-gray-400 hover:text-gray-600 w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-100"
+                            >
+                                <i className="fas fa-times"></i>
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleUpdateRencana} className="space-y-3.5 text-xs">
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Tanggal Target</label>
+                                    <input 
+                                        type="date"
+                                        value={editRencanaTanggal}
+                                        onChange={(e) => setEditRencanaTanggal(e.target.value)}
+                                        className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-teal-500"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Sesi Waktu Halaqah</label>
+                                    <select 
+                                        value={editRencanaWaktu}
+                                        onChange={(e) => setEditRencanaWaktu(e.target.value as any)}
+                                        className="w-full border border-gray-300 p-2.5 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-teal-500 bg-white"
+                                    >
+                                        <option value="Ba'da Subuh">Ba'da Subuh</option>
+                                        <option value="Ba'da Ashar">Ba'da Ashar</option>
+                                        <option value="Ba'da Maghrib">Ba'da Maghrib</option>
+                                        <option value="Ba'da Isya">Ba'da Isya</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Jenis Materi</label>
+                                    <select 
+                                        value={editRencanaJenis}
+                                        onChange={(e) => setEditRencanaJenis(e.target.value as any)}
+                                        className="w-full border border-gray-300 p-2.5 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-teal-500 bg-white"
+                                    >
+                                        <option value="Ziyadah">Ziyadah (Hafalan Baru)</option>
+                                        <option value="Muroja'ah">Muroja'ah (Pengulangan)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Juz</label>
+                                    <input 
+                                        type="number" 
+                                        min="1"
+                                        max="30"
+                                        value={editRencanaJuz}
+                                        onChange={(e) => setEditRencanaJuz(e.target.value)}
+                                        className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-teal-500"
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block font-bold text-gray-700 mb-1">Surat Al-Qur'an</label>
+                                <select
+                                    value={editRencanaSurahNomor}
+                                    onChange={(e) => {
+                                        const num = parseInt(e.target.value);
+                                        setEditRencanaSurahNomor(num);
+                                        const surah = QURAN_SURAHS.find(s => s.nomor === num);
+                                        if (surah) {
+                                            setEditRencanaJuz(String(surah.juz));
+                                        }
+                                    }}
+                                    className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-teal-500 bg-white"
+                                >
+                                    {QURAN_SURAHS.map(s => (
+                                        <option key={s.nomor} value={s.nomor}>
+                                            {s.nomor}. {s.nama} ({s.ayat} ayat, Juz {s.juz})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Ayat Awal</label>
+                                    <input 
+                                        type="number" 
+                                        min="1"
+                                        value={editRencanaAyatAwal}
+                                        onChange={(e) => setEditRencanaAyatAwal(e.target.value)}
+                                        className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-teal-500"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Ayat Akhir</label>
+                                    <input 
+                                        type="number" 
+                                        min="1"
+                                        value={editRencanaAyatAkhir}
+                                        onChange={(e) => setEditRencanaAyatAkhir(e.target.value)}
+                                        className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-teal-500"
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block font-bold text-gray-700 mb-1">Pesan / Kesiapan untuk Ustadz</label>
+                                <textarea 
+                                    rows={2}
+                                    value={editRencanaCatatan}
+                                    onChange={(e) => setEditRencanaCatatan(e.target.value)}
+                                    className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-teal-500"
+                                />
+                            </div>
+
+                            <div className="flex justify-end gap-2 pt-3 border-t border-gray-200">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsEditRencanaOpen(false)}
+                                    className="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 font-semibold"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-5 py-2 bg-teal-700 hover:bg-teal-800 text-white rounded-xl font-bold shadow-xs transition"
+                                >
+                                    Perbarui Rencana
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL 15: KONFIRMASI BATALKAN RENCANA SETORAN */}
+            {deleteRencanaTarget && (
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl animate-scale-up border border-gray-100">
+                        <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-3">
+                            <i className="fas fa-calendar-times text-xl"></i>
+                        </div>
+                        <h3 className="text-center font-bold text-gray-900 text-base mb-1">
+                            Batalkan Rencana Setoran
+                        </h3>
+                        <p className="text-center text-xs text-gray-600 leading-relaxed mb-5">
+                            Apakah Anda yakin ingin membatalkan target setoran <strong>Surat {deleteRencanaTarget.surat} ({deleteRencanaTarget.ayatAwal}-{deleteRencanaTarget.ayatAkhir})</strong> pada {deleteRencanaTarget.tanggalTarget}?
+                        </p>
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setDeleteRencanaTarget(null)}
+                                className="flex-1 py-2.5 px-3 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 text-xs font-semibold transition"
+                            >
+                                Kembali
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleConfirmDeleteRencana}
+                                className="flex-1 py-2.5 px-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-xs transition"
+                            >
+                                Ya, Batalkan
                             </button>
                         </div>
                     </div>

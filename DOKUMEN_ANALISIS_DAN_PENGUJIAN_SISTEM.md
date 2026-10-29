@@ -21,6 +21,14 @@ Kebutuhan sistem digali melalui observasi lapangan pada halaqah tahfidz Pondok P
 | **Ustadz / Musyrif** | Penguji & Pembina Halaqah | - Mencatat hasil tasmi' harian (surat, rentang ayat, nilai tajwid).<br>- Menguji kelulusan per juz (*Mutqin, Sedang Berjalan, Perlu Muroja'ah*).<br>- Menyetujui atau memberikan arahan pada rencana setoran santri.<br>- Memantau santri binaan yang aktif maupun yang mengalami kendala. |
 | **Administrator / Pengasuh** | Pimpinan Pesantren | - Mengelola data master santri (tambah, perbarui, status mutakharij).<br>- Memantau rekapitulasi analitik hafalan seluruh pesantren.<br>- Ekspor data ke format CSV dan cetak dokumen resmi (PDF).<br>- Memantau keandalan database cloud dan sinkronisasi real-time. |
 
+### 1.3 Matriks Hak Akses & Operasi CRUD per Role (Create, Read, Update, Delete)
+
+| Role Pengguna | Entitas Domain | **Create (C)** | **Read (R)** | **Update (U)** | **Delete (D)** |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Admin** | Data Master Santri | Registrasi santri baru (NIS, Nama, Kelas, Halaqah, Musyrif, Status, Target) | Melihat katalog master santri, filter status (Aktif/Izin/Mutakharij), & analitik global | Edit data profil santri, mutasi halaqah, ubah status santri, & target khatam | Hapus data santri dari state lokal & Cloud Firestore dengan modal konfirmasi aman |
+| **Ustadz** | Setoran Resmi & Ujian Tasmi' | Catat setoran tasmi' baru (surat 1-114, ayat, juz, nilai Mumtaz s.d Maqbul, catatan tajwid) | Melihat seluruh riwayat setoran halaqah, peta 30 juz santri, & antrean rencana | Edit catatan setoran (koreksi nilai/ayat), update kelulusan Juz Mutqin, & verifikasi rencana | Hapus catatan setoran (jika salah catat/duplikasi) dengan modal konfirmasi |
+| **Santri** | Jurnal Belajar & Rencana Target | Tulis Jurnal Belajar Mandiri & ajukan Rencana Target Setoran sesi halaqah | Membaca riwayat jurnal belajar, status approval rencana, bookmark mushaf, & peta 30 juz | Edit aktivitas jurnal belajar, perbarui target rencana sebelum disetor, & update bookmark | Hapus/batalkan jurnal belajar atau rencana setoran dengan modal konfirmasi |
+
 ---
 
 ## 2. Pemodelan Alur & Data (Data & Process Modeling)
