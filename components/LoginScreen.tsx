@@ -77,7 +77,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ apiUrl, setApiUrl, onL
                 setLoading(false);
                 onLoginSuccess({
                     id: 'admin',
-                    nama: 'Administrator Darul Kamal',
+                    nama: 'M. Asngad',
                     role: 'admin',
                     kelas: 'Pimpinan & Koordinator Tahfidz'
                 });
@@ -310,8 +310,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ apiUrl, setApiUrl, onL
                             className="flex flex-col items-center justify-center p-2.5 rounded-lg border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 transition text-xs group"
                         >
                             <i className="fas fa-user-shield text-emerald-700 text-sm mb-1 group-hover:scale-110 transition-transform"></i>
-                            <span className="font-bold">Admin</span>
-                            <span className="text-[10px] text-gray-500">admin123</span>
+                            <span className="font-bold">M. Asngad</span>
+                            <span className="text-[10px] text-gray-500">Admin</span>
                         </button>
                         <button
                             type="button"

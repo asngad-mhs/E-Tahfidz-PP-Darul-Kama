@@ -199,7 +199,7 @@ export const DEMO_USERS: Record<string, { pass: string; user: User }> = {
         pass: 'admin123',
         user: {
             id: 'admin',
-            nama: 'KH. Ahmad Ridwan, Lc.',
+            nama: 'M. Asngad',
             role: 'admin',
             kelas: 'Pimpinan & Koordinator Tahfidz'
         }
@@ -490,7 +490,7 @@ function doPost(e) {
       if (id === 'admin' && pass === 'admin123') {
         return createResponse({
           status: 'success',
-          nama: 'Administrator Darul Kamal',
+          nama: 'M. Asngad',
           role: 'admin'
         });
       }

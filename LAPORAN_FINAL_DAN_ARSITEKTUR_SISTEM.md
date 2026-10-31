@@ -1,13 +1,13 @@
 # LAPORAN FINAL & DOKUMENTASI ARSITEKTUR SISTEM
 ## SISTEM INFORMASI MONITORING E-TAHFIDZ AL-QUR'AN BERBASIS REAL-TIME
-### Pondok Pesantren Darul Karomah
+### Pondok Pesantren Darul Kamal
 
 ---
 
 **Identitas Proyek & Pengembang:**
 - **Institusi / Lembaga:** Universitas Nahdlatul Ulama Al Ghazali (UNUGHA) Cilacap
-- **Nama Sistem:** E-Tahfidz Pesantren Darul Karomah
-- **Akun Pengembang:** `asngad@mhs.unugha.ac.id`
+- **Nama Sistem:** E-Tahfidz Pesantren Darul Kamal
+- **Administrator Utama:** M. Asngad (`asngad@mhs.unugha.ac.id`)
 - **ID Cloud Database:** `ai-studio-etahfidzppdarulk-bbc86d02-d880-475c-b8d9-be3da1ffc69c`
 - **Teknologi Utama:** React 19, TypeScript, Vite, Tailwind CSS, Google Cloud Firestore, Lucide Icons
 - **Status Rilis:** Production Ready (100% Lolos Verifikasi, Bebas Error Sintaks, Hybrid Cloud-Local Persistence)
@@ -30,14 +30,14 @@
 ## BAB I: PENDAHULUAN & RINGKASAN EKSEKUTIF
 
 ### 1.1 Latar Belakang Masalah
-Pondok Pesantren Darul Karomah memiliki program unggulan Tahfidzul Qur'an yang diikuti oleh puluhan santri dari berbagai jenjang. Selama ini, proses mutaba'ah (pemantauan hafalan), pencatatan tasmi' harian, dan evaluasi kelulusan per juz masih mengandalkan buku setoran fisik manual. Sistem manual ini menghadapi berbagai kendala:
+Pondok Pesantren Darul Kamal memiliki program unggulan Tahfidzul Qur'an yang diikuti oleh puluhan santri dari berbagai jenjang. Selama ini, proses mutaba'ah (pemantauan hafalan), pencatatan tasmi' harian, dan evaluasi kelulusan per juz masih mengandalkan buku setoran fisik manual. Sistem manual ini menghadapi berbagai kendala:
 1. **Risiko Kerusakan & Kehilangan Fisik:** Buku mutaba'ah mudah robek, basah, atau tercecer.
 2. **Keterbatasan Aksesibilitas:** Wali santri dan pimpinan pondok sulit memantau perkembangan hafalan secara berkala tanpa hadir langsung di pondok.
 3. **Ketiadaan Validasi Tajwid Terpusat:** Riwayat predikat tajwid, kelancaran makhorijul huruf, serta status mutqin (penguatan) sulit diagregasi menjadi statistik kumulatif.
 4. **Koordinasi Target yang Lambat:** Rencana target hafalan santri tidak terhubung langsung dengan kalender verifikasi ustadz pengampu halaqah.
 
 ### 1.2 Solusi yang Dibangun
-Aplikasi **E-Tahfidz Pesantren Darul Karomah** dirancang sebagai aplikasi web berbasis cloud real-time yang modern, responsif, dan mudah digunakan oleh seluruh pemangku kepentingan (Admin Pesantren, Dewan Ustadz/Asatidz, dan Santri). 
+Aplikasi **E-Tahfidz Pesantren Darul Kamal** dirancang sebagai aplikasi web berbasis cloud real-time yang modern, responsif, dan mudah digunakan oleh seluruh pemangku kepentingan (Admin Pesantren: M. Asngad, Dewan Ustadz/Asatidz, dan Santri). 
 
 Aplikasi ini mengintegrasikan:
 - Arsitektur **Hybrid Real-Time Persistence** (Sinkronisasi dua arah Google Cloud Firestore + Local Cache Browser untuk ketahanan koneksi pesantren).
@@ -128,7 +128,7 @@ graph LR
     Santri((Santri Tahfidz))
 
     %% Boundary
-    subgraph E_Tahfidz_System ["Sistem Informasi E-Tahfidz Pesantren Darul Karomah"]
+    subgraph E_Tahfidz_System ["Sistem Informasi E-Tahfidz Pesantren Darul Kamal"]
         UC_Auth[1. Ganti Peran & Identitas]
         
         %% Admin Use Cases
@@ -536,7 +536,7 @@ Pengujian sistem dilakukan secara menyeluruh dengan metode **White-Box Testing**
 ## BAB VI: KESIMPULAN DAN SARAN PENGEMBANGAN
 
 ### 6.1 Kesimpulan
-1. **Penyelesaian Sistem:** Sistem Informasi Monitoring E-Tahfidz Al-Qur'an Pondok Pesantren Darul Karomah telah berhasil dirancang, dibangun, dan diuji secara komprehensif tanpa adanya celah error sintaksis maupun kegagalan logika bisnis.
+1. **Penyelesaian Sistem:** Sistem Informasi Monitoring E-Tahfidz Al-Qur'an Pondok Pesantren Darul Kamal telah berhasil dirancang, dibangun, dan diuji secara komprehensif tanpa adanya celah error sintaksis maupun kegagalan logika bisnis dengan Administrator Utama M. Asngad.
 2. **Kesesuaian Kebutuhan Pengguna:** Pembagian peran (Admin, Ustadz, dan Santri) telah memiliki alur kerja yang jelas dengan implementasi operasi CRUD (*Create, Read, Update, Delete*) lengkap dan terisolasi sesuai wewenang masing-masing.
 3. **Keandalan Data:** Pemanfaatan Google Cloud Firestore yang dipadukan dengan strategi *local-first cache fallback* memberikan ketahanan tinggi terhadap kondisi jaringan pesantren yang fluktuatif.
 
@@ -546,4 +546,4 @@ Pengujian sistem dilakukan secara menyeluruh dengan metode **White-Box Testing**
 3. **Pencetakan Syahadah Otomatis:** Fitur ekspor Syahadah/Sertifikat Khatam Tahfidz berformat PDF ber-QR Code resmi dari pimpinan pesantren.
 
 ---
-*Dokumen ini diterbitkan sebagai Laporan Final dan Dokumentasi Teknis Resmi Sistem E-Tahfidz Pesantren Darul Karomah.*
+*Dokumen ini diterbitkan sebagai Laporan Final dan Dokumentasi Teknis Resmi Sistem E-Tahfidz Pesantren Darul Kamal.*
