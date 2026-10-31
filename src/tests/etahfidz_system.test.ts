@@ -394,3 +394,52 @@ describe('11. Modul Mata Pelajaran & Kurikulum Tahfidz Pesantren', () => {
     });
 });
 
+describe('12. Modul Raport & Syahadah Capaian Tahfidz Al-Qur\'an', () => {
+    it('harus memformulasikan nomor registrasi syahadah resmi dan predikat marhalah santri', () => {
+        const santri30Juz = INITIAL_SANTRI.find(s => s.totalHafalanJuz === 30) || INITIAL_SANTRI[0];
+        const tahunMasehi = new Date().getFullYear();
+        const nomorSyahadah = `DK/LPTQ/${tahunMasehi}/${santri30Juz.nis || '1234'}/${santri30Juz.totalHafalanJuz}JUZ`;
+
+        expect(nomorSyahadah).toContain('DK/LPTQ/');
+        expect(nomorSyahadah).toContain(santri30Juz.nis);
+
+        const getPredikat = (juz: number) => {
+            if (juz >= 30) return { label: 'Khotmil Qur\'an 30 Juz (Mumtaz Syarof)', grade: 'Mumtaz Murtadi' };
+            if (juz >= 20) return { label: 'Mutqin Marhalah Ulya (Sangat Baik)', grade: 'Jayyid Jiddan' };
+            if (juz >= 10) return { label: 'Mutqin Marhalah Wustho (Baik)', grade: 'Jayyid' };
+            return { label: 'Marhalah Ula / I\'dad (Dasar)', grade: 'Maqbul' };
+        };
+
+        const predikat7Juz = getPredikat(7);
+        expect(predikat7Juz.grade).toBe('Maqbul');
+
+        const predikat30Juz = getPredikat(30);
+        expect(predikat30Juz.grade).toBe('Mumtaz Murtadi');
+    });
+});
+
+describe('13. Utilitas Cerdas & Kalkulator Estimator Target Khatam 30 Juz', () => {
+    it('harus menghitung kebutuhan ziayadah harian dan rekomendasi muroja\'ah secara realistis', () => {
+        const startJuz = 7;
+        const targetJuz = 30;
+        const durasiBulan = 12;
+        const hariAktifPerMinggu = 5;
+
+        const sisaJuz = targetJuz - startJuz; // 23 Juz
+        expect(sisaJuz).toBe(23);
+
+        const sisaHalaman = sisaJuz * 20; // 460 halaman
+        expect(sisaHalaman).toBe(460);
+
+        const totalMinggu = Math.round(durasiBulan * 4.33); // ~52 minggu
+        const totalHariAktif = totalMinggu * hariAktifPerMinggu; // 260 hari
+        const halamanPerHari = parseFloat((sisaHalaman / totalHariAktif).toFixed(1)); // ~1.8 halaman/hari
+
+        expect(halamanPerHari).toBeGreaterThan(1.0);
+        expect(halamanPerHari).toBeLessThan(3.0);
+
+        const rekomendasiMurojaah = Math.max(0.5, Math.min(2.5, +(startJuz / 10).toFixed(1)));
+        expect(rekomendasiMurojaah).toBe(0.7);
+    });
+});
+

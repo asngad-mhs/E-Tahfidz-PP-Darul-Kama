@@ -1,0 +1,18 @@
+{
+  "name": "E-Tahfidz PP Darul Kamal",
+  "short_name": "E-Tahfidz DK",
+  "description": "Sistem Informasi Manajemen E-Tahfidz Pondok Pesantren Darul Kamal dengan Database Real-Time dan Integrasi Kurikulum.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#064E3B",
+  "theme_color": "#064E3B",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23064E3B'/><text x='50' y='68' font-size='50' text-anchor='middle' fill='%23F59E0B'>📖</text></svg>",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

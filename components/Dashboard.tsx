@@ -22,6 +22,8 @@ import {
     testConnection
 } from '../services/firebaseService';
 import { KelasMapelModule } from './KelasMapelModule';
+import { RaportSyahadahModal } from './RaportSyahadahModal';
+import { TahfidzToolsModal } from './TahfidzToolsModal';
 
 interface DashboardProps {
     user: User | null;
@@ -370,6 +372,52 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
         setIsResetModalOpen(false);
         setResetSuccessMessage('Seluruh data santri, setoran, jurnal belajar, kelas tahfidz, mata pelajaran, dan peta 30 juz berhasil dikembalikan ke bawaan.');
         setTimeout(() => setResetSuccessMessage(''), 4000);
+    };
+
+    // Modal Raport & Syahadah Tahfidz
+    const [isRaportModalOpen, setIsRaportModalOpen] = useState(false);
+    const [raportTargetSantri, setRaportTargetSantri] = useState<Santri | null>(null);
+
+    const handleOpenRaport = (santri: Santri) => {
+        setRaportTargetSantri(santri);
+        setIsRaportModalOpen(true);
+    };
+
+    // Modal Utilitas Cerdas (Kalkulator Target Khatam, Audio Murattal, Backup/Restore)
+    const [isToolsModalOpen, setIsToolsModalOpen] = useState(false);
+    const [toolsInitialTab, setToolsInitialTab] = useState<'kalkulator' | 'audio' | 'backup'>('kalkulator');
+
+    const handleOpenTools = (tab: 'kalkulator' | 'audio' | 'backup' = 'kalkulator') => {
+        setToolsInitialTab(tab);
+        setIsToolsModalOpen(true);
+    };
+
+    const handleRestoreData = (backupData: {
+        santri?: Santri[];
+        setoran?: SetoranRecord[];
+        jurnal?: JurnalBelajarSantri[];
+        rencana?: RencanaSetoran[];
+        kelas?: KelasTahfidz[];
+        mapel?: MataPelajaranTahfidz[];
+    }) => {
+        if (backupData.santri && backupData.santri.length > 0) {
+            setSantriList(backupData.santri);
+        }
+        if (backupData.setoran && backupData.setoran.length > 0) {
+            setSetoranList(backupData.setoran);
+        }
+        if (backupData.jurnal && backupData.jurnal.length > 0) {
+            setJurnalList(backupData.jurnal);
+        }
+        if (backupData.rencana && backupData.rencana.length > 0) {
+            setRencanaList(backupData.rencana);
+        }
+        if (backupData.kelas && backupData.kelas.length > 0) {
+            setKelasList(backupData.kelas);
+        }
+        if (backupData.mapel && backupData.mapel.length > 0) {
+            setMapelList(backupData.mapel);
+        }
     };
 
     // Current santri 30 Juz progress
@@ -1457,6 +1505,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                                 </button>
                             </>
                         )}
+
+                        <button
+                            type="button"
+                            onClick={() => handleOpenTools('kalkulator')}
+                            className="bg-emerald-850 hover:bg-emerald-900 text-white border border-emerald-700 px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition"
+                            title="Kalkulator Target 30 Juz, Audio Murattal & Cadangan Data"
+                        >
+                            <i className="fa-solid fa-toolbox text-amber-300"></i>
+                            <span>Utilitas &amp; Murattal</span>
+                        </button>
                     </div>
                 </div>
 
@@ -2586,23 +2644,53 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                                     </button>
                                 </div>
 
-                                <div className="inline-flex rounded-lg border border-gray-200 p-0.5 bg-gray-50">
+                                <div className="flex items-center gap-2 flex-wrap">
                                     <button
-                                        onClick={() => setJuzViewMode('grid')}
-                                        className={`px-3 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 transition ${
-                                            juzViewMode === 'grid' ? 'bg-white shadow-xs text-emerald-800' : 'text-gray-500 hover:text-gray-900'
-                                        }`}
+                                        type="button"
+                                        onClick={() => handleOpenRaport(activeJuzSantri)}
+                                        className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-emerald-950 font-bold text-xs rounded-lg shadow-xs flex items-center gap-1.5 transition"
+                                        title="Cetak Transkrip & Syahadah Resmi Capaian Santri Ini"
                                     >
-                                        <i className="fas fa-th-large"></i> Grid 30 Juz
+                                        <i className="fa-solid fa-certificate"></i>
+                                        <span>Cetak Raport / Syahadah</span>
                                     </button>
                                     <button
-                                        onClick={() => setJuzViewMode('table')}
-                                        className={`px-3 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 transition ${
-                                            juzViewMode === 'table' ? 'bg-white shadow-xs text-emerald-800' : 'text-gray-500 hover:text-gray-900'
-                                        }`}
+                                        type="button"
+                                        onClick={() => handleOpenTools('kalkulator')}
+                                        className="px-3 py-1.5 bg-emerald-800 hover:bg-emerald-900 text-white font-semibold text-xs rounded-lg shadow-xs flex items-center gap-1.5 transition"
+                                        title="Simulasi Target Khatam 30 Juz"
                                     >
-                                        <i className="fas fa-list"></i> Tabel Rekap
+                                        <i className="fa-solid fa-calculator text-amber-300"></i>
+                                        <span>Simulasi Khatam</span>
                                     </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleOpenTools('audio')}
+                                        className="px-3 py-1.5 bg-teal-700 hover:bg-teal-800 text-white font-semibold text-xs rounded-lg shadow-xs flex items-center gap-1.5 transition"
+                                        title="Dengarkan Murattal Al-Qur'an 30 Juz"
+                                    >
+                                        <i className="fa-solid fa-headphones text-teal-200"></i>
+                                        <span>Murattal Tilawah</span>
+                                    </button>
+
+                                    <div className="inline-flex rounded-lg border border-gray-200 p-0.5 bg-gray-50 ml-auto">
+                                        <button
+                                            onClick={() => setJuzViewMode('grid')}
+                                            className={`px-3 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 transition ${
+                                                juzViewMode === 'grid' ? 'bg-white shadow-xs text-emerald-800' : 'text-gray-500 hover:text-gray-900'
+                                            }`}
+                                        >
+                                            <i className="fas fa-th-large"></i> Grid 30 Juz
+                                        </button>
+                                        <button
+                                            onClick={() => setJuzViewMode('table')}
+                                            className={`px-3 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 transition ${
+                                                juzViewMode === 'table' ? 'bg-white shadow-xs text-emerald-800' : 'text-gray-500 hover:text-gray-900'
+                                            }`}
+                                        >
+                                            <i className="fas fa-list"></i> Tabel Rekap
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -2931,6 +3019,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
 
                                         {(isAdmin || isUstadz) && (
                                             <div className="flex gap-2 pt-1">
+                                                <button
+                                                    onClick={() => handleOpenRaport(santri)}
+                                                    className="px-2.5 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-semibold py-1.5 rounded-xl border border-amber-200 transition flex items-center justify-center gap-1"
+                                                    title="Cetak Transkrip & Syahadah Capaian Santri"
+                                                >
+                                                    <i className="fa-solid fa-certificate text-amber-600"></i>
+                                                    <span>Raport</span>
+                                                </button>
                                                 <button
                                                     onClick={() => handleOpenEditSantri(santri)}
                                                     className="flex-1 bg-gray-100 hover:bg-emerald-50 hover:text-emerald-800 text-gray-700 text-xs font-semibold py-1.5 rounded-xl border border-gray-200 transition flex items-center justify-center gap-1"
@@ -5079,6 +5175,30 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                     </div>
                 </div>
             )}
+
+            {/* MODAL RAPORT & SYAHADAH TAHFIDZ RESMI */}
+            <RaportSyahadahModal
+                isOpen={isRaportModalOpen}
+                onClose={() => setIsRaportModalOpen(false)}
+                santri={raportTargetSantri}
+                setoranList={setoranList}
+                kelasList={kelasList}
+            />
+
+            {/* MODAL UTILITAS CERDAS (ESTIMATOR KHATAM, MURATTAL AUDIO, BACKUP/RESTORE) */}
+            <TahfidzToolsModal
+                isOpen={isToolsModalOpen}
+                onClose={() => setIsToolsModalOpen(false)}
+                initialTab={toolsInitialTab}
+                currentSantri={currentSantri}
+                allSantri={santriList}
+                allSetoran={setoranList}
+                allJurnal={jurnalList}
+                allRencana={rencanaList}
+                allKelas={kelasList}
+                allMapel={mapelList}
+                onRestoreData={handleRestoreData}
+            />
         </div>
     );
 };
