@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { callAPI } from '../services/apiService';
 import { User } from '../types';
 import { PLACEHOLDER_MARKER, ISLAMIC_BG_PATTERN } from '../constants';
-import { DEMO_USERS, GOOGLE_SCRIPT_SAMPLE_CODE } from '../mockData';
+import { DEMO_USERS, GOOGLE_SCRIPT_SAMPLE_CODE, INITIAL_SANTRI } from '../mockData';
 import { Input } from './Input';
 import { Button } from './Button';
 
@@ -99,15 +99,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ apiUrl, setApiUrl, onL
             return;
         }
 
-        // Cek Data Santri (dari localStorage atau mock bawaan)
-        let allSantri = [];
+        // Cek Data Santri (dari localStorage atau mock bawaan INITIAL_SANTRI)
+        let allSantri = INITIAL_SANTRI;
         try {
             const saved = localStorage.getItem('darul_kamal_santri_list');
             if (saved) {
                 allSantri = JSON.parse(saved);
             }
         } catch {
-            allSantri = [];
+            allSantri = INITIAL_SANTRI;
         }
 
         // Cari santri berdasarkan NIS, ID, atau nama

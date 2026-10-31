@@ -25,6 +25,16 @@ service cloud.firestore {
       allow write: if isValidId(rencanaId);
     }
 
+    match /kelas/{kelasId} {
+      allow read: if true;
+      allow write: if isValidId(kelasId);
+    }
+
+    match /mapel/{mapelId} {
+      allow read: if true;
+      allow write: if isValidId(mapelId);
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

@@ -13,7 +13,12 @@
         "musyrif": { "type": "string" },
         "totalHafalanJuz": { "type": "number" },
         "suratTerakhir": { "type": "string" },
-        "status": { "type": "string" }
+        "status": { "type": "string" },
+        "targetKhatam": { "type": "string" },
+        "targetHalamanPerHari": { "type": "number" },
+        "streakHari": { "type": "number" },
+        "lastReadBookmark": { "type": "object" },
+        "juzProgress": { "type": "object" }
       },
       "required": ["nis", "nama", "halaqah", "musyrif"]
     },
@@ -52,7 +57,10 @@
         "juz": { "type": "number" },
         "durasiMenit": { "type": "number" },
         "tingkatKelancaran": { "type": "string" },
-        "catatanAyatSulit": { "type": "string" }
+        "catatanAyatSulit": { "type": "string" },
+        "catatanMusyrif": { "type": "string" },
+        "parafMusyrif": { "type": "string" },
+        "status": { "type": "string" }
       },
       "required": ["santriId", "tanggal", "kegiatan", "surat"]
     },
@@ -71,9 +79,49 @@
         "ayatAkhir": { "type": "number" },
         "juz": { "type": "number" },
         "status": { "type": "string" },
-        "catatanSantri": { "type": "string" }
+        "catatanSantri": { "type": "string" },
+        "catatanUstadz": { "type": "string" }
       },
       "required": ["santriId", "tanggalTarget", "waktu", "jenis", "surat", "status"]
+    },
+    "KelasTahfidz": {
+      "title": "KelasTahfidz",
+      "description": "Master data kelas tahfidz, wali kelas, ruangan, dan kapasitas",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "namaKelas": { "type": "string" },
+        "tingkat": { "type": "string" },
+        "waliKelas": { "type": "string" },
+        "ruangan": { "type": "string" },
+        "kapasitas": { "type": "number" },
+        "targetJuzMinimal": { "type": "number" },
+        "tahunAjaran": { "type": "string" },
+        "keterangan": { "type": "string" },
+        "jadwalHalaqah": { "type": "string" }
+      },
+      "required": ["namaKelas", "tingkat", "waliKelas", "kapasitas"]
+    },
+    "MataPelajaranTahfidz": {
+      "title": "MataPelajaranTahfidz",
+      "description": "Kurikulum mata pelajaran tahfidz dan kepesantrenan",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "kodeMapel": { "type": "string" },
+        "namaMapel": { "type": "string" },
+        "kitabRujukan": { "type": "string" },
+        "ustadzPengampu": { "type": "string" },
+        "kelasId": { "type": "string" },
+        "namaKelas": { "type": "string" },
+        "hari": { "type": "string" },
+        "jamMulai": { "type": "string" },
+        "jamSelesai": { "type": "string" },
+        "ruangan": { "type": "string" },
+        "bobotSks": { "type": "number" },
+        "deskripsi": { "type": "string" }
+      },
+      "required": ["kodeMapel", "namaMapel", "kitabRujukan", "ustadzPengampu", "hari"]
     }
   },
   "firestore": {
@@ -92,6 +140,14 @@
     "/rencana/{rencanaId}": {
       "schema": { "$ref": "#/entities/RencanaSetoran" },
       "description": "Antrean jadwal pengajuan setoran ke musyrif"
+    },
+    "/kelas/{kelasId}": {
+      "schema": { "$ref": "#/entities/KelasTahfidz" },
+      "description": "Master data kelas tahfidz"
+    },
+    "/mapel/{mapelId}": {
+      "schema": { "$ref": "#/entities/MataPelajaranTahfidz" },
+      "description": "Kurikulum dan jadwal mata pelajaran tahfidz"
     }
   }
 }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { User, Santri, SetoranRecord, JuzStatusType, JuzProgressRecord, JurnalBelajarSantri, RencanaSetoran } from '../types';
-import { INITIAL_SANTRI, INITIAL_SETORAN, INITIAL_JURNAL_BELAJAR, INITIAL_RENCANA_SETORAN, GOOGLE_SCRIPT_SAMPLE_CODE, QURAN_SURAHS, JUZ_METADATA, createDefaultJuzProgress } from '../mockData';
+import { User, Santri, SetoranRecord, JuzStatusType, JuzProgressRecord, JurnalBelajarSantri, RencanaSetoran, KelasTahfidz, MataPelajaranTahfidz } from '../types';
+import { INITIAL_SANTRI, INITIAL_SETORAN, INITIAL_JURNAL_BELAJAR, INITIAL_RENCANA_SETORAN, INITIAL_KELAS_TAHFIDZ, INITIAL_MAPEL_TAHFIDZ, GOOGLE_SCRIPT_SAMPLE_CODE, QURAN_SURAHS, JUZ_METADATA, createDefaultJuzProgress } from '../mockData';
 import { callAPI } from '../services/apiService';
 import { Button } from './Button';
 import { 
@@ -9,6 +9,8 @@ import {
     subscribeSetoran, 
     subscribeJurnal, 
     subscribeRencana, 
+    subscribeKelas,
+    subscribeMapel,
     syncSantriDoc, 
     syncSetoranDoc, 
     syncJurnalDoc, 
@@ -19,6 +21,7 @@ import {
     deleteRencanaDoc,
     testConnection
 } from '../services/firebaseService';
+import { KelasMapelModule } from './KelasMapelModule';
 
 interface DashboardProps {
     user: User | null;
@@ -35,7 +38,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
     const isUstadz = effectiveRole === 'ustadz';
     const isSantri = effectiveRole === 'santri';
 
-    type TabType = 'dashboard' | 'jurnal' | 'rencana' | 'hafalan' | 'setoran' | 'santri' | 'halaqah' | 'pengaturan';
+    type TabType = 'dashboard' | 'jurnal' | 'rencana' | 'hafalan' | 'setoran' | 'santri' | 'halaqah' | 'pengaturan' | 'kelas_mapel';
     const [activeTab, setActiveTab] = useState<TabType>('dashboard');
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -99,6 +102,32 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
         localStorage.setItem('darul_kamal_rencana_list', JSON.stringify(rencanaList));
     }, [rencanaList]);
 
+    // Persisted Kelas Tahfidz List
+    const [kelasList, setKelasList] = useState<KelasTahfidz[]>(() => {
+        const saved = localStorage.getItem('darul_kamal_kelas_list');
+        if (saved) {
+            try { return JSON.parse(saved); } catch { return INITIAL_KELAS_TAHFIDZ; }
+        }
+        return INITIAL_KELAS_TAHFIDZ;
+    });
+
+    // Persisted Mata Pelajaran Tahfidz List
+    const [mapelList, setMapelList] = useState<MataPelajaranTahfidz[]>(() => {
+        const saved = localStorage.getItem('darul_kamal_mapel_list');
+        if (saved) {
+            try { return JSON.parse(saved); } catch { return INITIAL_MAPEL_TAHFIDZ; }
+        }
+        return INITIAL_MAPEL_TAHFIDZ;
+    });
+
+    useEffect(() => {
+        localStorage.setItem('darul_kamal_kelas_list', JSON.stringify(kelasList));
+    }, [kelasList]);
+
+    useEffect(() => {
+        localStorage.setItem('darul_kamal_mapel_list', JSON.stringify(mapelList));
+    }, [mapelList]);
+
     // Firebase Firestore Real-Time Sync
     const [firebaseConnected, setFirebaseConnected] = useState(false);
 
@@ -132,17 +161,43 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
             }
         });
 
+        const unsubKelas = subscribeKelas((remoteKelas) => {
+            if (remoteKelas && remoteKelas.length > 0) {
+                setKelasList(remoteKelas);
+            }
+        });
+
+        const unsubMapel = subscribeMapel((remoteMapel) => {
+            if (remoteMapel && remoteMapel.length > 0) {
+                setMapelList(remoteMapel);
+            }
+        });
+
         return () => {
             unsubSantri();
             unsubSetoran();
             unsubJurnal();
             unsubRencana();
+            unsubKelas();
+            unsubMapel();
         };
     }, []);
 
+    // Halaqah to Musyrif Default Mapping
+    const HALAQAH_MUSYRIF_MAP: Record<string, string> = {
+        'Halaqah Abu Bakar Ash-Shiddiq': 'Ustadz Abdullah Mukhtar, S.Pd.I',
+        'Halaqah Umar bin Khattab': 'Ustadz Muhammad Yusuf, Lc.',
+        'Halaqah Utsman bin Affan': 'Ustadz Ahmad Zaki, Al-Hafidz',
+        'Halaqah Ali bin Abi Thalib': 'Ustadz Ridwan Hakim, M.Pd.'
+    };
+
+    // Simulated Santri ID (for Santri role switching & inspection)
+    const [simulatedSantriId, setSimulatedSantriId] = useState<string>('');
+
     // Active Santri Object (for Santri role or selected in Admin view)
     const currentSantri: Santri = (isSantri
-        ? santriList.find(s => 
+        ? (simulatedSantriId ? santriList.find(s => s.id === simulatedSantriId) : null) ||
+          santriList.find(s => 
             (user?.id && (s.id === user.id || s.nis === user.id || s.nis.toLowerCase() === user.id.toLowerCase())) ||
             (user?.nama && (s.nama.toLowerCase() === user.nama.toLowerCase() || s.nama.toLowerCase().includes(user.nama.toLowerCase())))
           )
@@ -183,6 +238,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
     const [jurnalKelancaran, setJurnalKelancaran] = useState<'Sangat Lancar' | 'Cukup Lancar' | 'Masih Terbata' | 'Butuh Pendampingan'>('Sangat Lancar');
     const [jurnalCatatanSulit, setJurnalCatatanSulit] = useState('');
 
+    // Modal Bimbingan & Paraf Musyrif untuk Jurnal Santri
+    const [isBimbinganJurnalOpen, setIsBimbinganJurnalOpen] = useState(false);
+    const [bimbinganTargetJurnal, setBimbinganTargetJurnal] = useState<JurnalBelajarSantri | null>(null);
+    const [bimbinganText, setBimbinganText] = useState('');
+
     // Modal Input Rencana Setoran (Plan submission)
     const [isAddRencanaOpen, setIsAddRencanaOpen] = useState(false);
     const [rencanaTanggal, setRencanaTanggal] = useState<string>(new Date().toISOString().split('T')[0]);
@@ -194,8 +254,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
     const [rencanaJuz, setRencanaJuz] = useState('8');
     const [rencanaCatatan, setRencanaCatatan] = useState('');
 
-    // Modal Input Setoran Baru (Official Musyrif Input)
+    // Modal Input Setoran Baru (Official Musyrif Input) & Linked Rencana
     const [isAddSetoranOpen, setIsAddSetoranOpen] = useState(false);
+    const [linkedRencanaId, setLinkedRencanaId] = useState<string | null>(null);
     const [selectedSantriId, setSelectedSantriId] = useState(santriList[0]?.id || 's-1');
     const [formJenis, setFormJenis] = useState<'Ziyadah' | "Muroja'ah">('Ziyadah');
     const [selectedSurahNomor, setSelectedSurahNomor] = useState<number>(1);
@@ -294,16 +355,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
         setSetoranList(INITIAL_SETORAN);
         setJurnalList(INITIAL_JURNAL_BELAJAR);
         setRencanaList(INITIAL_RENCANA_SETORAN);
+        setKelasList(INITIAL_KELAS_TAHFIDZ);
+        setMapelList(INITIAL_MAPEL_TAHFIDZ);
         localStorage.removeItem('darul_kamal_santri_list');
         localStorage.removeItem('darul_kamal_setoran_list');
         localStorage.removeItem('darul_kamal_jurnal_list');
         localStorage.removeItem('darul_kamal_rencana_list');
+        localStorage.removeItem('darul_kamal_kelas_list');
+        localStorage.removeItem('darul_kamal_mapel_list');
         localStorage.removeItem('darul_karomah_santri_list');
         localStorage.removeItem('darul_karomah_setoran_list');
         localStorage.removeItem('darul_karomah_jurnal_list');
         localStorage.removeItem('darul_karomah_rencana_list');
         setIsResetModalOpen(false);
-        setResetSuccessMessage('Seluruh data santri, setoran, jurnal belajar, dan peta 30 juz berhasil dikembalikan ke bawaan.');
+        setResetSuccessMessage('Seluruh data santri, setoran, jurnal belajar, kelas tahfidz, mata pelajaran, dan peta 30 juz berhasil dikembalikan ke bawaan.');
         setTimeout(() => setResetSuccessMessage(''), 4000);
     };
 
@@ -514,6 +579,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
         setSetoranList([newRecord, ...setoranList]);
         syncSetoranDoc(newRecord);
 
+        // If this setoran was launched from an approved plan, automatically mark the plan completed
+        if (linkedRencanaId) {
+            handleApproveRencana(linkedRencanaId, 'Selesai Disetorkan');
+            setLinkedRencanaId(null);
+        }
+
         setSantriList(santriList.map(s => {
             if (s.id === targetSantri.id) {
                 const calculatedJuz = Math.max(s.totalHafalanJuz, formJenis === 'Ziyadah' ? parseInt(formJuz) || s.totalHafalanJuz : s.totalHafalanJuz);
@@ -530,6 +601,47 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
 
         setIsAddSetoranOpen(false);
         setFormCatatan('');
+    };
+
+    // Cross-Role Workflow 1: Ustadz launches direct setoran tasmi' test from student's planned submission
+    const handleStartSetoranFromRencana = (rcn: RencanaSetoran) => {
+        setSelectedSantriId(rcn.santriId);
+        setFormJenis(rcn.jenis);
+        const sObj = QURAN_SURAHS.find(s => s.nama.toLowerCase() === rcn.surat.toLowerCase()) || QURAN_SURAHS[0];
+        setSelectedSurahNomor(sObj.nomor);
+        setFormAyatAwal(String(rcn.ayatAwal));
+        setFormAyatAkhir(String(rcn.ayatAkhir));
+        setFormJuz(String(rcn.juz));
+        setFormCatatan(rcn.catatanSantri ? `Rencana Santri: "${rcn.catatanSantri}". Evaluasi musyrif: ` : '');
+        setLinkedRencanaId(rcn.id);
+        setIsAddSetoranOpen(true);
+    };
+
+    // Cross-Role Workflow 2: Ustadz / Admin evaluates and provides direct paraf/bimbingan to student self-study journal
+    const handleOpenBimbinganJurnal = (jrn: JurnalBelajarSantri) => {
+        setBimbinganTargetJurnal(jrn);
+        setBimbinganText(jrn.catatanMusyrif || '');
+        setIsBimbinganJurnalOpen(true);
+    };
+
+    const handleSaveBimbinganJurnal = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!bimbinganTargetJurnal) return;
+        const updatedList = jurnalList.map(j => {
+            if (j.id === bimbinganTargetJurnal.id) {
+                const updated: JurnalBelajarSantri = {
+                    ...j,
+                    catatanMusyrif: bimbinganText.trim(),
+                    parafMusyrif: user?.nama || (isAdmin ? 'M. Asngad (Admin)' : 'Ustadz Abdullah Mukhtar, S.Pd.I')
+                };
+                syncJurnalDoc(updated);
+                return updated;
+            }
+            return j;
+        });
+        setJurnalList(updatedList);
+        setIsBimbinganJurnalOpen(false);
+        setBimbinganTargetJurnal(null);
     };
 
     const handleSaveSantri = (e: React.FormEvent) => {
@@ -884,6 +996,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                             </button>
 
                             <button 
+                                onClick={() => setActiveTab('kelas_mapel')}
+                                className={`w-full text-left px-4 py-2.5 rounded-xl font-medium transition flex items-center gap-3 text-xs ${
+                                    activeTab === 'kelas_mapel' ? 'bg-emerald-800 text-white shadow-md font-bold' : 'text-emerald-100 hover:bg-emerald-800/50'
+                                }`}
+                            >
+                                <i className="fas fa-graduation-cap w-4 text-center text-amber-300"></i>
+                                <span>Kelas &amp; Mata Pelajaran</span>
+                                <span className="ml-auto text-[10px] bg-emerald-700 px-2 py-0.5 rounded-full">{kelasList.length} Kls</span>
+                            </button>
+
+                            <button 
                                 onClick={() => setActiveTab('hafalan')}
                                 className={`w-full text-left px-4 py-2.5 rounded-xl font-medium transition flex items-center gap-3 text-xs ${
                                     activeTab === 'hafalan' ? 'bg-emerald-800 text-white shadow-md font-bold' : 'text-emerald-100 hover:bg-emerald-800/50'
@@ -940,6 +1063,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                             >
                                 <i className="fas fa-home w-4 text-center text-amber-300"></i>
                                 <span>Beranda Halaqah</span>
+                            </button>
+
+                            <button 
+                                onClick={() => setActiveTab('kelas_mapel')}
+                                className={`w-full text-left px-4 py-2.5 rounded-xl font-medium transition flex items-center gap-3 text-xs ${
+                                    activeTab === 'kelas_mapel' ? 'bg-emerald-800 text-white shadow-md font-bold' : 'text-emerald-100 hover:bg-emerald-800/50'
+                                }`}
+                            >
+                                <i className="fas fa-chalkboard-teacher w-4 text-center text-amber-300"></i>
+                                <span>Kelas &amp; Jadwal Mengajar</span>
+                                <span className="ml-auto text-[10px] bg-emerald-700 px-2 py-0.5 rounded-full">{kelasList.length} Kls</span>
                             </button>
 
                             <button 
@@ -1016,6 +1150,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                             >
                                 <i className="fas fa-home w-4 text-center text-amber-300"></i>
                                 <span>Ruang Belajar Santri</span>
+                            </button>
+
+                            <button 
+                                onClick={() => setActiveTab('kelas_mapel')}
+                                className={`w-full text-left px-4 py-2.5 rounded-xl font-medium transition flex items-center gap-3 text-xs ${
+                                    activeTab === 'kelas_mapel' ? 'bg-emerald-800 text-white shadow-md font-bold' : 'text-emerald-100 hover:bg-emerald-800/50'
+                                }`}
+                            >
+                                <i className="fas fa-graduation-cap w-4 text-center text-amber-300"></i>
+                                <span>Kelas &amp; Mata Pelajaran Saya</span>
                             </button>
 
                             <button 
@@ -1118,6 +1262,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                             <button onClick={() => { setActiveTab('santri'); setMobileMenuOpen(false); }} className="w-full text-left py-2 px-3 rounded hover:bg-emerald-900 flex items-center gap-2">
                                 <i className="fas fa-users-cog w-5"></i> Kelola Data Santri
                             </button>
+                            <button onClick={() => { setActiveTab('kelas_mapel'); setMobileMenuOpen(false); }} className="w-full text-left py-2 px-3 rounded hover:bg-emerald-900 flex items-center gap-2 text-amber-300">
+                                <i className="fas fa-graduation-cap w-5"></i> Kelas &amp; Mata Pelajaran
+                            </button>
                             <button onClick={() => { setActiveTab('halaqah'); setMobileMenuOpen(false); }} className="w-full text-left py-2 px-3 rounded hover:bg-emerald-900 flex items-center gap-2">
                                 <i className="fas fa-mosque w-5"></i> Manajemen Halaqah
                             </button>
@@ -1128,6 +1275,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                     )}
                     {isUstadz && (
                         <>
+                            <button onClick={() => { setActiveTab('kelas_mapel'); setMobileMenuOpen(false); }} className="w-full text-left py-2 px-3 rounded hover:bg-emerald-900 flex items-center gap-2 text-amber-300">
+                                <i className="fas fa-chalkboard-teacher w-5"></i> Kelas &amp; Jadwal Mengajar
+                            </button>
                             <button onClick={() => { setActiveTab('setoran'); setMobileMenuOpen(false); }} className="w-full text-left py-2 px-3 rounded hover:bg-emerald-900 flex items-center gap-2">
                                 <i className="fas fa-book-reader w-5"></i> Setoran &amp; Tasmi' (CRUD)
                             </button>
@@ -1144,6 +1294,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                     )}
                     {isSantri && (
                         <>
+                            <button onClick={() => { setActiveTab('kelas_mapel'); setMobileMenuOpen(false); }} className="w-full text-left py-2 px-3 rounded hover:bg-emerald-900 flex items-center gap-2 text-amber-300">
+                                <i className="fas fa-graduation-cap w-5"></i> Kelas &amp; Mata Pelajaran Saya
+                            </button>
                             <button onClick={() => { setActiveTab('hafalan'); setMobileMenuOpen(false); }} className="w-full text-left py-2 px-3 rounded hover:bg-emerald-900 flex items-center gap-2 text-teal-300">
                                 <i className="fas fa-book-quran w-5"></i> Peta 30 Juz Saya
                             </button>
@@ -1232,6 +1385,29 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                                 <i className="fas fa-user-graduate mr-1"></i> Santri
                             </button>
                         </div>
+
+                        {/* SIMULASI SANTRI SWITCHER (Memungkinkan pengujian profil santri berbeda: 7 Juz, 15 Juz, 30 Juz) */}
+                        {isSantri && (
+                            <div className="flex items-center bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200 text-xs shadow-2xs">
+                                <span className="font-bold text-emerald-900 mr-2 flex items-center gap-1">
+                                    <i className="fas fa-id-badge text-emerald-700"></i> Akun Santri:
+                                </span>
+                                <select
+                                    value={simulatedSantriId || currentSantri.id}
+                                    onChange={(e) => {
+                                        setSimulatedSantriId(e.target.value);
+                                        setSelectedJuzSantriId(e.target.value);
+                                    }}
+                                    className="bg-white border border-emerald-300 text-emerald-950 font-semibold rounded-lg px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-emerald-500"
+                                >
+                                    {santriList.map(s => (
+                                        <option key={s.id} value={s.id}>
+                                            {s.nama} ({s.totalHafalanJuz} Juz • {s.status || 'Aktif'})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
 
                         {/* Quick Action Buttons Sesuai Peran */}
                         {isSantri && (
@@ -2018,6 +2194,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                                                     }`}>
                                                         {jrn.tingkatKelancaran}
                                                     </span>
+
+                                                    {/* Musyrif / Admin Action: Beri Bimbingan Langsung */}
+                                                    {(!isSantri || isAdmin) && (
+                                                        <button
+                                                            onClick={() => handleOpenBimbinganJurnal(jrn)}
+                                                            className="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold px-2.5 py-1 rounded-lg border border-emerald-200 flex items-center gap-1 transition"
+                                                            title="Beri bimbingan / evaluasi langsung untuk santri"
+                                                        >
+                                                            <i className="fas fa-comment-dots text-emerald-600"></i>
+                                                            <span className="hidden sm:inline">{jrn.catatanMusyrif ? 'Ubah Bimbingan' : 'Beri Bimbingan'}</span>
+                                                        </button>
+                                                    )}
+
                                                     {(isSantri || isAdmin) && (
                                                         <div className="flex items-center gap-1.5 ml-1">
                                                             <button
@@ -2053,6 +2242,22 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                                                     </p>
                                                 </div>
                                             </div>
+
+                                            {/* Kartu Bimbingan & Paraf Musyrif */}
+                                            {jrn.catatanMusyrif && (
+                                                <div className="mt-3 bg-emerald-50/80 border border-emerald-200 rounded-xl p-3 text-xs">
+                                                    <div className="flex items-center justify-between text-emerald-900 font-bold mb-1">
+                                                        <span className="flex items-center gap-1.5">
+                                                            <i className="fas fa-check-circle text-emerald-600"></i>
+                                                            <span>Bimbingan &amp; Paraf Musyrif:</span>
+                                                        </span>
+                                                        <span className="bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded text-[10px] font-bold">
+                                                            {jrn.parafMusyrif || 'Ustadz Pembina'}
+                                                        </span>
+                                                    </div>
+                                                    <p className="italic text-emerald-800">"{jrn.catatanMusyrif}"</p>
+                                                </div>
+                                            )}
                                         </div>
                                     );
                                 })
@@ -2203,13 +2408,22 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                                                 </p>
 
                                                 {(isAdmin || isUstadz) && (
-                                                    <div className="flex gap-2 self-end sm:self-auto">
+                                                    <div className="flex items-center gap-2 flex-wrap self-end sm:self-auto">
                                                         {rcn.status === 'Diajukan' && (
                                                             <button
                                                                 onClick={() => handleApproveRencana(rcn.id, 'Disetujui Musyrif')}
-                                                                className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 shadow-2xs transition"
+                                                                className="bg-teal-600 hover:bg-teal-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 shadow-2xs transition"
                                                             >
                                                                 <i className="fas fa-check"></i> Setujui Jadwal
+                                                            </button>
+                                                        )}
+                                                        {rcn.status !== 'Selesai Disetorkan' && (
+                                                            <button
+                                                                onClick={() => handleStartSetoranFromRencana(rcn)}
+                                                                className="bg-emerald-700 hover:bg-emerald-800 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 shadow-2xs transition"
+                                                                title="Langsung mulai uji hafalan santri sesuai rencana ini"
+                                                            >
+                                                                <i className="fas fa-microphone-alt"></i> Uji &amp; Nilai Tasmi' Sekarang
                                                             </button>
                                                         )}
                                                         {rcn.status === 'Disetujui Musyrif' && (
@@ -3229,6 +3443,27 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                         </div>
                     </div>
                 )}
+
+                {/* TAB 9: KELAS TAHFIDZ & MATA PELAJARAN */}
+                {activeTab === 'kelas_mapel' && (
+                    <KelasMapelModule 
+                        isAdmin={isAdmin}
+                        isUstadz={isUstadz}
+                        isSantri={isSantri}
+                        user={user}
+                        currentSantri={currentSantri}
+                        santriList={santriList}
+                        kelasList={kelasList}
+                        setKelasList={setKelasList}
+                        mapelList={mapelList}
+                        setMapelList={setMapelList}
+                        onOpenSetoranForSantri={(santriId) => {
+                            setSelectedSantriId(santriId);
+                            setIsAddSetoranOpen(true);
+                        }}
+                        onNavigateTab={(tab) => setActiveTab(tab)}
+                    />
+                )}
             </main>
 
             {/* MODAL 1: TULIS JURNAL BELAJAR MANDIRI (SANTRI) */}
@@ -3969,12 +4204,21 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
 
                             <div>
                                 <label className="block font-bold text-gray-700 mb-1">Kelompok Halaqah</label>
-                                <input 
-                                    type="text" 
+                                <select 
                                     value={newHalaqah}
-                                    onChange={(e) => setNewHalaqah(e.target.value)}
-                                    className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                                />
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        setNewHalaqah(val);
+                                        if (HALAQAH_MUSYRIF_MAP[val]) {
+                                            setNewMusyrif(HALAQAH_MUSYRIF_MAP[val]);
+                                        }
+                                    }}
+                                    className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 bg-white"
+                                >
+                                    {Object.keys(HALAQAH_MUSYRIF_MAP).map(h => (
+                                        <option key={h} value={h}>{h}</option>
+                                    ))}
+                                </select>
                             </div>
 
                             <div className="grid grid-cols-2 gap-3">
@@ -4131,13 +4375,22 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                             </div>
 
                             <div>
-                                <label className="block font-bold text-gray-700 mb-1">Kelompok Halaqah</label>
-                                <input 
-                                    type="text" 
+                                <label className="block font-bold text-gray-700 mb-1">Kelompok Halaqah (Mutasi Halaqah)</label>
+                                <select 
                                     value={editHalaqah}
-                                    onChange={(e) => setEditHalaqah(e.target.value)}
-                                    className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500"
-                                />
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        setEditHalaqah(val);
+                                        if (HALAQAH_MUSYRIF_MAP[val]) {
+                                            setEditMusyrif(HALAQAH_MUSYRIF_MAP[val]);
+                                        }
+                                    }}
+                                    className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 bg-white"
+                                >
+                                    {Object.keys(HALAQAH_MUSYRIF_MAP).map(h => (
+                                        <option key={h} value={h}>{h}</option>
+                                    ))}
+                                </select>
                             </div>
 
                             <div>
@@ -4752,6 +5005,77 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                                 Ya, Batalkan
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+            {/* MODAL 16: INPUT EVALUASI & BIMBINGAN JURNAL BELAJAR OLEH MUSYRIF */}
+            {isBimbinganJurnalOpen && bimbinganTargetJurnal && (
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl animate-scale-up border border-gray-100">
+                        <div className="flex justify-between items-center pb-3 border-b border-gray-200 mb-4">
+                            <h3 className="font-bold text-gray-900 text-base flex items-center gap-2">
+                                <i className="fas fa-comment-dots text-emerald-700"></i> Bimbingan &amp; Evaluasi Musyrif
+                            </h3>
+                            <button 
+                                onClick={() => setIsBimbinganJurnalOpen(false)}
+                                className="text-gray-400 hover:text-gray-600 w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-100"
+                            >
+                                <i className="fas fa-times"></i>
+                            </button>
+                        </div>
+
+                        <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 text-xs mb-3 space-y-1">
+                            <div className="flex justify-between">
+                                <span className="text-gray-500">Santri:</span>
+                                <span className="font-bold text-gray-800">
+                                    {santriList.find(s => s.id === bimbinganTargetJurnal.santriId)?.nama || 'Santri'}
+                                </span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-500">Materi Belajar:</span>
+                                <span className="font-semibold text-gray-700">
+                                    Surat {bimbinganTargetJurnal.surat} ({bimbinganTargetJurnal.ayatAwal}-{bimbinganTargetJurnal.ayatAkhir}) Juz {bimbinganTargetJurnal.juz}
+                                </span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-500">Catatan Santri:</span>
+                                <span className="italic text-gray-600">
+                                    "{bimbinganTargetJurnal.catatanAyatSulit || 'Tidak ada catatan khusus'}"
+                                </span>
+                            </div>
+                        </div>
+
+                        <form onSubmit={handleSaveBimbinganJurnal} className="space-y-3.5 text-xs">
+                            <div>
+                                <label className="block font-bold text-gray-700 mb-1">
+                                    Catatan Nasehat, Bimbingan Tajwid, &amp; Arahan Muroja'ah
+                                </label>
+                                <textarea 
+                                    rows={4}
+                                    placeholder="Tuliskan masukan untuk santri, misal: 'Tingkatkan simakan talaqqi di ayat 45-50 karena ada waqaf lazim dan idgham bighunnah...'"
+                                    value={bimbinganText}
+                                    onChange={(e) => setBimbinganText(e.target.value)}
+                                    className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 outline-none"
+                                    required
+                                />
+                            </div>
+
+                            <div className="flex justify-end gap-2 pt-2 border-t border-gray-200">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsBimbinganJurnalOpen(false)}
+                                    className="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 font-semibold"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold shadow-xs transition"
+                                >
+                                    Simpan Bimbingan &amp; Beri Paraf
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

@@ -32,6 +32,8 @@ export interface JurnalBelajarSantri {
     durasiMenit: number;
     tingkatKelancaran: 'Sangat Lancar' | 'Cukup Lancar' | 'Masih Terbata' | 'Butuh Pendampingan';
     catatanAyatSulit?: string;
+    catatanMusyrif?: string;
+    parafMusyrif?: string;
     status: 'Selesai' | 'Dalam Proses';
 }
 
@@ -47,6 +49,7 @@ export interface RencanaSetoran {
     juz: number;
     status: 'Diajukan' | 'Disetujui Musyrif' | 'Selesai Disetorkan';
     catatanSantri?: string;
+    catatanUstadz?: string;
 }
 
 export interface Santri {
@@ -103,4 +106,34 @@ export interface ApiPayload {
 export interface LoginCredentials {
     id: string;
     pass: string;
+}
+
+export interface KelasTahfidz {
+    id: string;
+    namaKelas: string;
+    tingkat: 'Ula / I\'dad' | 'Wustha' | 'Ulya' | 'Takhassus 30 Juz' | string;
+    waliKelas: string;
+    ruangan: string;
+    kapasitas: number;
+    targetJuzMinimal: number;
+    tahunAjaran: string;
+    keterangan?: string;
+    jadwalHalaqah?: string;
+}
+
+export interface MataPelajaranTahfidz {
+    id: string;
+    kodeMapel: string;
+    namaMapel: string;
+    kitabRujukan: string;
+    ustadzPengampu: string;
+    kelasId: string;
+    namaKelas: string;
+    hari: 'Senin' | 'Selasa' | 'Rabu' | 'Kamis' | 'Jum\'at' | 'Sabtu' | 'Ahad' | string;
+    jamMulai: string;
+    jamSelesai: string;
+    ruangan: string;
+    bobotSks?: number;
+    deskripsi?: string;
+    silabus?: string[];
 }

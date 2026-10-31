@@ -1,4 +1,4 @@
-import { Santri, SetoranRecord, User, JuzProgressRecord, JurnalBelajarSantri, RencanaSetoran } from './types';
+import { Santri, SetoranRecord, User, JuzProgressRecord, JurnalBelajarSantri, RencanaSetoran, KelasTahfidz, MataPelajaranTahfidz } from './types';
 
 export interface QuranSurah {
     nomor: number;
@@ -211,7 +211,7 @@ export const DEMO_USERS: Record<string, { pass: string; user: User }> = {
             nis: '12345',
             nama: 'Muhammad Fauzan Al-Hafidz',
             role: 'santri',
-            kelas: 'Kelas XI - Tahfidz Ula A',
+            kelas: 'Tahfidz Ula (Tingkat Dasar)',
             halaqah: 'Halaqah Abu Bakar Ash-Shiddiq',
             totalJuz: 7
         }
@@ -223,7 +223,7 @@ export const DEMO_USERS: Record<string, { pass: string; user: User }> = {
             nis: '12345',
             nama: 'Muhammad Fauzan Al-Hafidz',
             role: 'santri',
-            kelas: 'Kelas XI - Tahfidz Ula A',
+            kelas: 'Tahfidz Ula (Tingkat Dasar)',
             halaqah: 'Halaqah Abu Bakar Ash-Shiddiq',
             totalJuz: 7
         }
@@ -244,9 +244,9 @@ export const INITIAL_SANTRI: Santri[] = [
         id: 's-1',
         nis: '12345',
         nama: 'Muhammad Fauzan Al-Hafidz',
-        kelas: 'XI IPA - Tahfidz Ula',
+        kelas: 'Tahfidz Ula (Tingkat Dasar)',
         halaqah: 'Halaqah Abu Bakar',
-        musyrif: 'Ustadz Abdullah',
+        musyrif: 'Ustadz Abdullah Mukhtar, S.Pd.I',
         totalHafalanJuz: 7,
         suratTerakhir: "Al-A'raf : 1 - 50",
         status: 'Aktif',
@@ -265,7 +265,7 @@ export const INITIAL_SANTRI: Santri[] = [
         id: 's-2',
         nis: '12346',
         nama: 'Ahmad Ziyad Rahman',
-        kelas: 'X - Tahfidz Wustho',
+        kelas: 'Tahfidz Wustho (Tingkat Menengah)',
         halaqah: 'Halaqah Umar bin Khattab',
         musyrif: 'Ustadz Hasan Basri',
         totalHafalanJuz: 12,
@@ -277,7 +277,7 @@ export const INITIAL_SANTRI: Santri[] = [
         id: 's-3',
         nis: '12347',
         nama: 'Fatimatuz Zahra',
-        kelas: 'XII - Tahfidz Ulya',
+        kelas: 'Tahfidz Ulya (Tingkat Lanjut)',
         halaqah: 'Halaqah Khadijah',
         musyrif: 'Ustadzah Nurul Hidayah',
         totalHafalanJuz: 28,
@@ -289,9 +289,9 @@ export const INITIAL_SANTRI: Santri[] = [
         id: 's-4',
         nis: '12348',
         nama: 'Rizki Maulana Malik',
-        kelas: 'IX - Tahfidz Dasar',
+        kelas: 'Tahfidz Ula (Tingkat Dasar)',
         halaqah: 'Halaqah Utsman bin Affan',
-        musyrif: 'Ustadz Abdullah',
+        musyrif: 'Ustadz Abdullah Mukhtar, S.Pd.I',
         totalHafalanJuz: 3,
         suratTerakhir: "An-Naba' s.d An-Nas",
         status: 'Aktif',
@@ -301,7 +301,7 @@ export const INITIAL_SANTRI: Santri[] = [
         id: 's-5',
         nis: '12349',
         nama: 'Hilman Syakir',
-        kelas: 'XI - Tahfidz Ula',
+        kelas: 'Tahfidz Ula (Tingkat Dasar)',
         halaqah: 'Halaqah Ali bin Abi Thalib',
         musyrif: 'Ustadz M. Ilyas',
         totalHafalanJuz: 15,
@@ -313,13 +313,27 @@ export const INITIAL_SANTRI: Santri[] = [
         id: 's-6',
         nis: '12350',
         nama: 'Aisyah Putri Rahmadhani',
-        kelas: 'XI - Tahfidz Ula',
+        kelas: 'Tahfidz Ula (Tingkat Dasar)',
         halaqah: 'Halaqah Aisyah',
         musyrif: 'Ustadzah Siti Maryam',
         totalHafalanJuz: 9,
         suratTerakhir: 'At-Taubah : 1 - 40',
         status: 'Aktif',
         juzProgress: createDefaultJuzProgress(9)
+    },
+    {
+        id: 's-7',
+        nis: '12351',
+        nama: 'Siti Aisyah Al-Khatimah',
+        kelas: 'Takhassus 30 Juz & Khotmil Qur\'an',
+        halaqah: 'Halaqah Utsman bin Affan',
+        musyrif: 'Ustadz Ahmad Zaki, Al-Hafidz',
+        totalHafalanJuz: 30,
+        suratTerakhir: 'An-Nas : 1 - 6',
+        status: 'Mutakharij',
+        juzProgress: createDefaultJuzProgress(30),
+        targetKhatam: 'Alhamdulillah Khatam 30 Juz',
+        streakHari: 45
     }
 ];
 
@@ -409,6 +423,8 @@ export const INITIAL_JURNAL_BELAJAR: JurnalBelajarSantri[] = [
         durasiMenit: 45,
         tingkatKelancaran: 'Sangat Lancar',
         catatanAyatSulit: 'Ayat 34 ada waqaf lazim, ayat 40 hati-hati kata hattā yalija',
+        catatanMusyrif: 'Mumtaz, pertahankan tartil dan makhorijul huruf. Waqaf lazim diindahkan.',
+        parafMusyrif: 'Ustadz Abdullah Mukhtar, S.Pd.I',
         status: 'Selesai'
     },
     {
@@ -437,6 +453,8 @@ export const INITIAL_JURNAL_BELAJAR: JurnalBelajarSantri[] = [
         durasiMenit: 40,
         tingkatKelancaran: 'Cukup Lancar',
         catatanAyatSulit: 'Disimak oleh Ahmad Ziyad, perbaiki panjang mad jaiz di ayat 92',
+        catatanMusyrif: 'Telah disimak ulang, mad jaiz munfashil dijaga 4-5 harakat.',
+        parafMusyrif: 'Ustadz Abdullah Mukhtar, S.Pd.I',
         status: 'Selesai'
     }
 ];
@@ -467,6 +485,168 @@ export const INITIAL_RENCANA_SETORAN: RencanaSetoran[] = [
         juz: 7,
         status: 'Diajukan',
         catatanSantri: 'Muroja\'ah 5 lembar awal Juz 7'
+    }
+];
+
+export const INITIAL_KELAS_TAHFIDZ: KelasTahfidz[] = [
+    {
+        id: 'kls-1',
+        namaKelas: 'Tahfidz Ula (Tingkat Dasar)',
+        tingkat: 'Ula / I\'dad',
+        waliKelas: 'Ustadz Abdullah Mukhtar, S.Pd.I',
+        ruangan: 'Gedung Tahfidz Lt. 1 - Ruang Al-Fatihah',
+        kapasitas: 20,
+        targetJuzMinimal: 5,
+        tahunAjaran: '1447-1448 H / 2026-2027',
+        keterangan: 'Fokus pada tahsin makhorijul huruf, penguatan juz 1-5 dan juz 30.',
+        jadwalHalaqah: 'Ba\'da Subuh (05:15 - 06:45) & Ba\'da Ashar (16:00 - 17:15)'
+    },
+    {
+        id: 'kls-2',
+        namaKelas: 'Tahfidz Wustho (Tingkat Menengah)',
+        tingkat: 'Wustha',
+        waliKelas: 'Ustadz Hasan Basri',
+        ruangan: 'Gedung Tahfidz Lt. 2 - Ruang Al-Baqarah',
+        kapasitas: 18,
+        targetJuzMinimal: 15,
+        tahunAjaran: '1447-1448 H / 2026-2027',
+        keterangan: 'Fokus kelancaran ziyadah juz 6-15 dan pemantapan hafalan mutasyabihat.',
+        jadwalHalaqah: 'Ba\'da Subuh (05:15 - 06:45) & Ba\'da Maghrib (18:15 - 19:15)'
+    },
+    {
+        id: 'kls-3',
+        namaKelas: 'Tahfidz Ulya (Tingkat Lanjut)',
+        tingkat: 'Ulya',
+        waliKelas: 'Ustadzah Nurul Hidayah',
+        ruangan: 'Gedung Khodijah Lt. 1 - Ruang Maryam',
+        kapasitas: 15,
+        targetJuzMinimal: 25,
+        tahunAjaran: '1447-1448 H / 2026-2027',
+        keterangan: 'Fokus ziyadah juz 16-30 serta persiapan ujian tasmi\' maraton bil-ghaib.',
+        jadwalHalaqah: 'Ba\'da Subuh & Ba\'da Isya'
+    },
+    {
+        id: 'kls-4',
+        namaKelas: 'Takhassus 30 Juz & Khotmil Qur\'an',
+        tingkat: 'Takhassus 30 Juz',
+        waliKelas: 'Ustadz Ahmad Zaki, Al-Hafidz',
+        ruangan: 'Baitul Qur\'an Utama - Ruang Darul Kamal',
+        kapasitas: 12,
+        targetJuzMinimal: 30,
+        tahunAjaran: '1447-1448 H / 2026-2027',
+        keterangan: 'Kelas khusus santri penghafal 30 juz menuju sanad muttashil dan khotmil qur\'an akbar.',
+        jadwalHalaqah: 'Sepanjang Hari / Halaqah Intensif'
+    }
+];
+
+export const INITIAL_MAPEL_TAHFIDZ: MataPelajaranTahfidz[] = [
+    {
+        id: 'mpl-1',
+        kodeMapel: 'TJW-101',
+        namaMapel: 'Ilmu Tajwid & Jazariyyah',
+        kitabRujukan: 'Matan Al-Muqaddimah Al-Jazariyyah (Imam Ibnul Jazari)',
+        ustadzPengampu: 'Ustadz Abdullah Mukhtar, S.Pd.I',
+        kelasId: 'kls-1',
+        namaKelas: 'Tahfidz Ula (Tingkat Dasar)',
+        hari: 'Senin',
+        jamMulai: '08:00',
+        jamSelesai: '09:30',
+        ruangan: 'Ruang Al-Fatihah',
+        bobotSks: 2,
+        deskripsi: 'Kajian makhorijul huruf, sifatul huruf, ahkamul mad wal qashr, waqaf wal ibtida\'.',
+        silabus: [
+            'Makharijul Huruf Halqiyah & Lisaniyah',
+            'Sifat Huruf Berlawanan & Tunggal',
+            'Hukum Nun Sukun & Tanwin',
+            'Hukum Mad Ashli & Far\'i',
+            'Waqaf Tam, Kafi, Hasan & Qabih'
+        ]
+    },
+    {
+        id: 'mpl-2',
+        kodeMapel: 'GHR-201',
+        namaMapel: 'Gharib & Musykilat Al-Qur\'an',
+        kitabRujukan: 'Panduan Gharib Qur\'an Riwayat Hafsh \'an \'Ashim Thariq Asy-Syathibiyyah',
+        ustadzPengampu: 'Ustadz Hasan Basri',
+        kelasId: 'kls-2',
+        namaKelas: 'Tahfidz Wustho (Tingkat Menengah)',
+        hari: 'Selasa',
+        jamMulai: '08:00',
+        jamSelesai: '09:30',
+        ruangan: 'Ruang Al-Baqarah',
+        bobotSks: 2,
+        deskripsi: 'Mempelajari ayat-ayat musykilah, imalah, isymam, saktah, tashil, dan naql serta shifir mustadir/mustathil.',
+        silabus: [
+            'Imalah Majreha (Hud: 41)',
+            'Isymam & Ikhtilas La Ta\'manna (Yusuf: 11)',
+            'Tashil A\'a\'jamiyyun (Fussilat: 44)',
+            '4 Titik Saktah Wajib Riwayat Hafsh',
+            'Naql Bi\'sal Ismu (Al-Hujurat: 11)'
+        ]
+    },
+    {
+        id: 'mpl-3',
+        kodeMapel: 'ADB-301',
+        namaMapel: 'Adab & Akhlaq Hamalatil Qur\'an',
+        kitabRujukan: 'Kitab At-Tibyan fi Adabi Hamalati Al-Qur\'an (Imam An-Nawawi)',
+        ustadzPengampu: 'Ustadz Abdullah Mukhtar, S.Pd.I',
+        kelasId: 'all',
+        namaKelas: 'Semua Kelas Tahfidz',
+        hari: 'Rabu',
+        jamMulai: '08:00',
+        jamSelesai: '09:30',
+        ruangan: 'Masjid Jami\' Darul Kamal',
+        bobotSks: 2,
+        deskripsi: 'Kajian adab pembawa Al-Qur\'an, ketulusan niat, adab tilawah malam hari, dan akhlaq ahlul qur\'an di masyarakat.',
+        silabus: [
+            'Keutamaan Membaca & Menghafal Al-Qur\'an',
+            'Adab Guru & Murid Penghafal Qur\'an',
+            'Adab Khusus Mengkhatamkan Al-Qur\'an',
+            'Muroja\'ah Harian & Menjaga Hafalan'
+        ]
+    },
+    {
+        id: 'mpl-4',
+        kodeMapel: 'NGH-401',
+        namaMapel: 'Nagham / Maqamat Tilawah Al-Qur\'an',
+        kitabRujukan: 'Buku Panduan 7 Maqamat (Bayati, Shoba, Hijaz, Nahawand, Rast, Sika, Jiharkah)',
+        ustadzPengampu: 'Ustadzah Nurul Hidayah',
+        kelasId: 'kls-3',
+        namaKelas: 'Tahfidz Ulya (Tingkat Lanjut)',
+        hari: 'Kamis',
+        jamMulai: '08:00',
+        jamSelesai: '09:30',
+        ruangan: 'Ruang Maryam',
+        bobotSks: 2,
+        deskripsi: 'Seni baca Al-Qur\'an tanpa melanggar kaidah tajwid, penghayatan makna tartil, dan fashohah.',
+        silabus: [
+            'Pengenalan Maqam Bayati (Qarar, Nawa, Jawab)',
+            'Maqam Shoba & Karakter Sedih/Kekhusyukan',
+            'Maqam Hijaz & Ketegasan Ayat Peringatan',
+            'Maqam Nahawand & Lembutnya Ayat Rahmat',
+            'Kombinasi Transisi Antar Maqamat'
+        ]
+    },
+    {
+        id: 'mpl-5',
+        kodeMapel: 'SND-501',
+        namaMapel: 'Dauroh Sanad & Mutasyabihat Lafdziyyah',
+        kitabRujukan: 'Kitab Idhahul Auqaf & Fathul Rahman fi Mutasyabihatil Qur\'an',
+        ustadzPengampu: 'Ustadz Ahmad Zaki, Al-Hafidz',
+        kelasId: 'kls-4',
+        namaKelas: 'Takhassus 30 Juz & Khotmil Qur\'an',
+        hari: 'Sabtu',
+        jamMulai: '09:00',
+        jamSelesai: '11:00',
+        ruangan: 'Baitul Qur\'an Utama',
+        bobotSks: 3,
+        deskripsi: 'Kajian pembedahan ayat serupa di 30 juz, talaqqi sanad bersambung kepada Rasulullah SAW.',
+        silabus: [
+            'Mutasyabihat Surat Al-Baqarah vs Ali \'Imran',
+            'Mutasyabihat Kisah Nabi Musa di 7 Surat Berbeda',
+            'Kaidah Jamak & Mufrad dalam Ayat Serupa',
+            'Ujian Tasmi\' 10 Juz Sekali Duduk'
+        ]
     }
 ];
 

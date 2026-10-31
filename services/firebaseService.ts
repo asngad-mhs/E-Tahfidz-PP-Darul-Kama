@@ -10,8 +10,8 @@ import {
     deleteDoc
 } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
-import { Santri, SetoranRecord, JurnalBelajarSantri, RencanaSetoran } from '../types';
-import { INITIAL_SANTRI, INITIAL_SETORAN, INITIAL_JURNAL_BELAJAR, INITIAL_RENCANA_SETORAN } from '../mockData';
+import { Santri, SetoranRecord, JurnalBelajarSantri, RencanaSetoran, KelasTahfidz, MataPelajaranTahfidz } from '../types';
+import { INITIAL_SANTRI, INITIAL_SETORAN, INITIAL_JURNAL_BELAJAR, INITIAL_RENCANA_SETORAN, INITIAL_KELAS_TAHFIDZ, INITIAL_MAPEL_TAHFIDZ } from '../mockData';
 
 // Initialize Firebase App
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
@@ -70,6 +70,22 @@ export async function seedInitialFirestoreData() {
             console.log("Seeding initial Rencana to Firestore...");
             for (const r of INITIAL_RENCANA_SETORAN) {
                 await setDoc(doc(db, 'rencana', r.id), r);
+            }
+        }
+
+        const kelasSnap = await getDocs(collection(db, 'kelas'));
+        if (kelasSnap.empty) {
+            console.log("Seeding initial Kelas Tahfidz to Firestore...");
+            for (const k of INITIAL_KELAS_TAHFIDZ) {
+                await setDoc(doc(db, 'kelas', k.id), k);
+            }
+        }
+
+        const mapelSnap = await getDocs(collection(db, 'mapel'));
+        if (mapelSnap.empty) {
+            console.log("Seeding initial Mapel Tahfidz to Firestore...");
+            for (const m of INITIAL_MAPEL_TAHFIDZ) {
+                await setDoc(doc(db, 'mapel', m.id), m);
             }
         }
     } catch (err) {
@@ -142,6 +158,36 @@ export function subscribeRencana(callback: (list: RencanaSetoran[]) => void) {
     }
 }
 
+export function subscribeKelas(callback: (list: KelasTahfidz[]) => void) {
+    try {
+        return onSnapshot(collection(db, 'kelas'), (snap) => {
+            if (!snap.empty) {
+                const list = snap.docs.map(d => d.data() as KelasTahfidz);
+                callback(list);
+            }
+        }, (err) => {
+            console.warn("Firestore Kelas subscribe notice:", err);
+        });
+    } catch {
+        return () => {};
+    }
+}
+
+export function subscribeMapel(callback: (list: MataPelajaranTahfidz[]) => void) {
+    try {
+        return onSnapshot(collection(db, 'mapel'), (snap) => {
+            if (!snap.empty) {
+                const list = snap.docs.map(d => d.data() as MataPelajaranTahfidz);
+                callback(list);
+            }
+        }, (err) => {
+            console.warn("Firestore Mapel subscribe notice:", err);
+        });
+    } catch {
+        return () => {};
+    }
+}
+
 // Write Helpers
 export async function syncSantriDoc(santri: Santri) {
     try {
@@ -172,6 +218,22 @@ export async function syncRencanaDoc(rencana: RencanaSetoran) {
         await setDoc(doc(db, 'rencana', rencana.id), rencana);
     } catch (e) {
         console.warn("Firestore save rencana error:", e);
+    }
+}
+
+export async function syncKelasDoc(kelas: KelasTahfidz) {
+    try {
+        await setDoc(doc(db, 'kelas', kelas.id), kelas);
+    } catch (e) {
+        console.warn("Firestore save kelas error:", e);
+    }
+}
+
+export async function syncMapelDoc(mapel: MataPelajaranTahfidz) {
+    try {
+        await setDoc(doc(db, 'mapel', mapel.id), mapel);
+    } catch (e) {
+        console.warn("Firestore save mapel error:", e);
     }
 }
 
@@ -207,3 +269,20 @@ export async function deleteRencanaDoc(id: string) {
         console.warn("Firestore delete rencana error:", e);
     }
 }
+
+export async function deleteKelasDoc(id: string) {
+    try {
+        await deleteDoc(doc(db, 'kelas', id));
+    } catch (e) {
+        console.warn("Firestore delete kelas error:", e);
+    }
+}
+
+export async function deleteMapelDoc(id: string) {
+    try {
+        await deleteDoc(doc(db, 'mapel', id));
+    } catch (e) {
+        console.warn("Firestore delete mapel error:", e);
+    }
+}
+
