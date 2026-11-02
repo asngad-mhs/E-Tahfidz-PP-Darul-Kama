@@ -68,9 +68,8 @@ interface DashboardProps {
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '', setApiUrl }) => {
-    // Dynamic Role Switcher (4 Peran: Admin, Pengasuh, Ustadz/Ustadzah, Santri)
-    const [currentRoleOverride, setCurrentRoleOverride] = useState<RoleType | null>(null);
-    const effectiveRole = currentRoleOverride || (user?.role as RoleType) || 'santri';
+    // Peran Pengguna (4 Peran: Admin, Pengasuh, Ustadz/Ustadzah, Santri)
+    const effectiveRole = (user?.role as RoleType) || 'santri';
     const isAdmin = effectiveRole === 'admin';
     const isPengasuh = effectiveRole === 'pengasuh';
     const isUstadz = effectiveRole === 'ustadz';
@@ -1673,49 +1672,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                     </div>
 
                     <div className="flex items-center gap-3 flex-wrap">
-                        {/* ROLE SWITCHER WIDGET: Memudahkan verifikasi 4 peran ekosistem pesantren */}
-                        <div className="flex items-center bg-gray-100 p-1 rounded-xl border border-gray-200 text-xs shadow-2xs">
-                            <span className="text-[11px] font-bold text-gray-600 px-2 flex items-center gap-1">
-                                <i className="fas fa-sync-alt text-gray-400"></i> Mode Peran:
-                            </span>
-                            <button
-                                onClick={() => { setCurrentRoleOverride('admin'); setActiveTab('dashboard'); }}
-                                className={`px-2.5 py-1 rounded-lg font-bold text-xs transition ${
-                                    isAdmin ? 'bg-amber-500 text-white shadow-xs' : 'text-gray-600 hover:text-gray-900'
-                                }`}
-                                title="Beralih ke tampilan Administrator Pesantren"
-                            >
-                                <i className="fas fa-user-shield mr-1"></i> Admin
-                            </button>
-                            <button
-                                onClick={() => { setCurrentRoleOverride('pengasuh'); setActiveTab('dashboard'); }}
-                                className={`px-2.5 py-1 rounded-lg font-bold text-xs transition ${
-                                    isPengasuh ? 'bg-purple-600 text-white shadow-xs' : 'text-gray-600 hover:text-gray-900'
-                                }`}
-                                title="Beralih ke tampilan Pengasuh Pondok Pesantren (Kyai)"
-                            >
-                                <i className="fas fa-mosque mr-1"></i> Pengasuh
-                            </button>
-                            <button
-                                onClick={() => { setCurrentRoleOverride('ustadz'); setActiveTab('dashboard'); }}
-                                className={`px-2.5 py-1 rounded-lg font-bold text-xs transition ${
-                                    isUstadz ? 'bg-blue-600 text-white shadow-xs' : 'text-gray-600 hover:text-gray-900'
-                                }`}
-                                title="Beralih ke tampilan Ustadz / Musyrif Halaqah"
-                            >
-                                <i className="fas fa-chalkboard-teacher mr-1"></i> Ustadz
-                            </button>
-                            <button
-                                onClick={() => { setCurrentRoleOverride('santri'); setActiveTab('dashboard'); }}
-                                className={`px-2.5 py-1 rounded-lg font-bold text-xs transition ${
-                                    isSantri ? 'bg-emerald-600 text-white shadow-xs' : 'text-gray-600 hover:text-gray-900'
-                                }`}
-                                title="Beralih ke tampilan Santri Tahfidz"
-                            >
-                                <i className="fas fa-user-graduate mr-1"></i> Santri
-                            </button>
-                        </div>
-
                         {/* SIMULASI SANTRI SWITCHER (Memungkinkan pengujian profil santri berbeda: 7 Juz, 15 Juz, 30 Juz) */}
                         {isSantri && (
                             <div className="flex items-center bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200 text-xs shadow-2xs">
