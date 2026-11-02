@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { User, Santri, SetoranRecord, JuzStatusType, JuzProgressRecord, JurnalBelajarSantri, RencanaSetoran, KelasTahfidz, MataPelajaranTahfidz } from '../types';
-import { INITIAL_SANTRI, INITIAL_SETORAN, INITIAL_JURNAL_BELAJAR, INITIAL_RENCANA_SETORAN, INITIAL_KELAS_TAHFIDZ, INITIAL_MAPEL_TAHFIDZ, GOOGLE_SCRIPT_SAMPLE_CODE, QURAN_SURAHS, JUZ_METADATA, createDefaultJuzProgress } from '../mockData';
+import { User, Santri, SetoranRecord, JuzStatusType, JuzProgressRecord, JurnalBelajarSantri, RencanaSetoran, KelasTahfidz, MataPelajaranTahfidz, TaujiyahPengasuh, RoleType } from '../types';
+import { INITIAL_SANTRI, INITIAL_SETORAN, INITIAL_JURNAL_BELAJAR, INITIAL_RENCANA_SETORAN, INITIAL_KELAS_TAHFIDZ, INITIAL_MAPEL_TAHFIDZ, INITIAL_TAUJIYAH_PENGASUH, GOOGLE_SCRIPT_SAMPLE_CODE, QURAN_SURAHS, JUZ_METADATA, createDefaultJuzProgress } from '../mockData';
 import { callAPI } from '../services/apiService';
 import { Button } from './Button';
 import { 
@@ -25,6 +25,41 @@ import { KelasMapelModule } from './KelasMapelModule';
 import { RaportSyahadahModal } from './RaportSyahadahModal';
 import { TahfidzToolsModal } from './TahfidzToolsModal';
 
+export const PESANTREN_HALAQAH_LIST = [
+    {
+        nama: 'Halaqah Abu Bakar Ash-Shiddiq',
+        musyrif: 'Ustadz Abdullah Mukhtar, S.Pd.I',
+        jadwal: "Ba'da Subuh & Ba'da Ashar",
+        lokasi: "Sayap Timur Masjid Jami'",
+        color: 'emerald',
+        icon: 'fa-shield-halved'
+    },
+    {
+        nama: 'Halaqah Umar bin Khattab',
+        musyrif: 'Ustadz Muhammad Yusuf, Lc.',
+        jadwal: "Ba'da Maghrib & Ba'da Isya",
+        lokasi: "Ruang Tahfidz Lt. 2",
+        color: 'blue',
+        icon: 'fa-landmark'
+    },
+    {
+        nama: 'Halaqah Utsman bin Affan',
+        musyrif: 'Ustadz Ahmad Zaki, Al-Hafidz',
+        jadwal: "Ba'da Subuh & Ba'da Ashar",
+        lokasi: "Serambi Masjid Jami'",
+        color: 'purple',
+        icon: 'fa-book-open-reader'
+    },
+    {
+        nama: 'Halaqah Ali bin Abi Thalib',
+        musyrif: 'Ustadz Ridwan Hakim, M.Pd.',
+        jadwal: "Ba'da Maghrib & Ba'da Isya",
+        lokasi: "Gazebo Tahfidz Asrama",
+        color: 'amber',
+        icon: 'fa-star-and-crescent'
+    }
+];
+
 interface DashboardProps {
     user: User | null;
     onLogout: () => void;
@@ -33,16 +68,30 @@ interface DashboardProps {
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '', setApiUrl }) => {
-    // Dynamic Role Switcher (mempermudah pengujian & validasi modul antar peran)
-    const [currentRoleOverride, setCurrentRoleOverride] = useState<'admin' | 'ustadz' | 'santri' | null>(null);
-    const effectiveRole = currentRoleOverride || (user?.role as 'admin' | 'ustadz' | 'santri') || 'santri';
+    // Dynamic Role Switcher (4 Peran: Admin, Pengasuh, Ustadz/Ustadzah, Santri)
+    const [currentRoleOverride, setCurrentRoleOverride] = useState<RoleType | null>(null);
+    const effectiveRole = currentRoleOverride || (user?.role as RoleType) || 'santri';
     const isAdmin = effectiveRole === 'admin';
+    const isPengasuh = effectiveRole === 'pengasuh';
     const isUstadz = effectiveRole === 'ustadz';
     const isSantri = effectiveRole === 'santri';
 
-    type TabType = 'dashboard' | 'jurnal' | 'rencana' | 'hafalan' | 'setoran' | 'santri' | 'halaqah' | 'pengaturan' | 'kelas_mapel';
+    type TabType = 'dashboard' | 'jurnal' | 'rencana' | 'hafalan' | 'setoran' | 'santri' | 'halaqah' | 'pengaturan' | 'kelas_mapel' | 'taujiyah' | 'wisuda';
     const [activeTab, setActiveTab] = useState<TabType>('dashboard');
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+    // Persisted Taujiyah Pengasuh List
+    const [taujiyahList, setTaujiyahList] = useState<TaujiyahPengasuh[]>(() => {
+        const saved = localStorage.getItem('darul_kamal_taujiyah_list');
+        if (saved) {
+            try { return JSON.parse(saved); } catch { return INITIAL_TAUJIYAH_PENGASUH; }
+        }
+        return INITIAL_TAUJIYAH_PENGASUH;
+    });
+
+    useEffect(() => {
+        localStorage.setItem('darul_kamal_taujiyah_list', JSON.stringify(taujiyahList));
+    }, [taujiyahList]);
 
     // Persisted Santri List
     const [santriList, setSantriList] = useState<Santri[]>(() => {
@@ -359,18 +408,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
         setRencanaList(INITIAL_RENCANA_SETORAN);
         setKelasList(INITIAL_KELAS_TAHFIDZ);
         setMapelList(INITIAL_MAPEL_TAHFIDZ);
+        setTaujiyahList(INITIAL_TAUJIYAH_PENGASUH);
         localStorage.removeItem('darul_kamal_santri_list');
         localStorage.removeItem('darul_kamal_setoran_list');
         localStorage.removeItem('darul_kamal_jurnal_list');
         localStorage.removeItem('darul_kamal_rencana_list');
         localStorage.removeItem('darul_kamal_kelas_list');
         localStorage.removeItem('darul_kamal_mapel_list');
+        localStorage.removeItem('darul_kamal_taujiyah_list');
         localStorage.removeItem('darul_karomah_santri_list');
         localStorage.removeItem('darul_karomah_setoran_list');
         localStorage.removeItem('darul_karomah_jurnal_list');
         localStorage.removeItem('darul_karomah_rencana_list');
         setIsResetModalOpen(false);
-        setResetSuccessMessage('Seluruh data santri, setoran, jurnal belajar, kelas tahfidz, mata pelajaran, dan peta 30 juz berhasil dikembalikan ke bawaan.');
+        setResetSuccessMessage('Seluruh data santri, setoran, jurnal belajar, kelas tahfidz, mata pelajaran, taujiyah pengasuh, dan peta 30 juz berhasil dikembalikan ke bawaan.');
         setTimeout(() => setResetSuccessMessage(''), 4000);
     };
 
@@ -418,6 +469,57 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
         if (backupData.mapel && backupData.mapel.length > 0) {
             setMapelList(backupData.mapel);
         }
+    };
+
+    // Pengasuh Role States: Taujiyah & Otorisasi Wisuda
+    const [isAddTaujiyahOpen, setIsAddTaujiyahOpen] = useState(false);
+    const [taujiyahJudul, setTaujiyahJudul] = useState('');
+    const [taujiyahTema, setTaujiyahTema] = useState('Adab & Akhlaq Al-Qur\'an');
+    const [taujiyahIsi, setTaujiyahIsi] = useState('');
+    const [taujiyahPemberi, setTaujiyahPemberi] = useState('K.H. Mohammad Sangidun, S.Ag., Al-Hafidz');
+    const [wisudaSuccessMsg, setWisudaSuccessMsg] = useState('');
+    const [filterTemaTaujiyah, setFilterTemaTaujiyah] = useState<string>('Semua');
+    const [filterWisudaStatus, setFilterWisudaStatus] = useState<string>('Semua');
+    const [searchWisudaQuery, setSearchWisudaQuery] = useState<string>('');
+
+    const handleSaveTaujiyah = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!taujiyahJudul.trim() || !taujiyahIsi.trim()) return;
+        const newTaujiyah: TaujiyahPengasuh = {
+            id: `tj-${Date.now()}`,
+            judul: taujiyahJudul.trim(),
+            tema: taujiyahTema,
+            isi: taujiyahIsi.trim(),
+            tanggal: new Date().toISOString().split('T')[0],
+            pemberiTaujiyah: taujiyahPemberi.trim() || 'K.H. Mohammad Sangidun, S.Ag., Al-Hafidz',
+            status: 'Dipublikasikan'
+        };
+        setTaujiyahList([newTaujiyah, ...taujiyahList]);
+        setIsAddTaujiyahOpen(false);
+        setTaujiyahJudul('');
+        setTaujiyahIsi('');
+    };
+
+    const handleDeleteTaujiyah = (id: string) => {
+        setTaujiyahList(taujiyahList.filter(t => t.id !== id));
+    };
+
+    const handleSahkanWisuda = (santri: Santri) => {
+        const updatedSantriList = santriList.map(s => {
+            if (s.id === santri.id) {
+                const updated: Santri = {
+                    ...s,
+                    status: 'Mutakharij',
+                    targetKhatam: 'Alhamdulillah Khatam 30 Juz (Disahkan Pengasuh)'
+                };
+                syncSantriDoc(updated);
+                return updated;
+            }
+            return s;
+        });
+        setSantriList(updatedSantriList);
+        setWisudaSuccessMsg(`Alhamdulillah! Pengesahan kelulusan Khotmil Qur'an 30 Juz ananda ${santri.nama} berhasil disahkan secara resmi oleh Pengasuh Pondok.`);
+        setTimeout(() => setWisudaSuccessMsg(''), 5000);
     };
 
     // Current santri 30 Juz progress
@@ -1006,16 +1108,112 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                     <div className="mt-2.5">
                         <span className={`text-[11px] px-3 py-1 rounded-full font-bold shadow-xs inline-flex items-center gap-1.5 ${
                             isAdmin ? 'bg-amber-400 text-amber-950 border border-amber-300' :
+                            isPengasuh ? 'bg-purple-400 text-purple-950 border border-purple-300' :
                             isUstadz ? 'bg-blue-400 text-blue-950 border border-blue-300' :
                             'bg-emerald-400 text-emerald-950 border border-emerald-300'
                         }`}>
-                            <i className={`fas ${isAdmin ? 'fa-user-shield' : isUstadz ? 'fa-chalkboard-teacher' : 'fa-user-graduate'}`}></i>
-                            {isAdmin ? 'M. Asngad (Admin)' : isUstadz ? 'Dewan Ustadz / Musyrif' : 'Santri Tahfidz'}
+                            <i className={`fas ${isAdmin ? 'fa-user-shield' : isPengasuh ? 'fa-mosque' : isUstadz ? 'fa-chalkboard-teacher' : 'fa-user-graduate'}`}></i>
+                            {isAdmin ? 'M. Asngad (Admin)' : isPengasuh ? 'K.H. Mohammad Sangidun (Pengasuh)' : isUstadz ? 'Dewan Ustadz / Musyrif' : 'Santri Tahfidz'}
                         </span>
                     </div>
                 </div>
 
                 <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
+                    {/* NAVIGASI KHUSUS PENGASUH PONDOK */}
+                    {isPengasuh && (
+                        <>
+                            <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-purple-300">
+                                Maktab Pengasuhan Pesantren
+                            </div>
+                            <button 
+                                onClick={() => setActiveTab('dashboard')}
+                                className={`w-full text-left px-4 py-2.5 rounded-xl font-medium transition flex items-center gap-3 text-xs ${
+                                    activeTab === 'dashboard' ? 'bg-emerald-800 text-white shadow-md font-bold' : 'text-emerald-100 hover:bg-emerald-800/50'
+                                }`}
+                            >
+                                <i className="fas fa-landmark w-4 text-center text-purple-300"></i>
+                                <span>Maktab Pengasuhan</span>
+                            </button>
+
+                            <button 
+                                onClick={() => setActiveTab('taujiyah')}
+                                className={`w-full text-left px-4 py-2.5 rounded-xl font-medium transition flex items-center gap-3 text-xs ${
+                                    activeTab === 'taujiyah' ? 'bg-emerald-800 text-white shadow-md font-bold' : 'text-emerald-100 hover:bg-emerald-800/50'
+                                }`}
+                            >
+                                <i className="fas fa-feather-alt w-4 text-center text-amber-300"></i>
+                                <span>Taujiyah &amp; Mau'izhah</span>
+                                <span className="ml-auto text-[10px] bg-purple-700 px-2 py-0.5 rounded-full">{taujiyahList.length}</span>
+                            </button>
+
+                            <button 
+                                onClick={() => setActiveTab('wisuda')}
+                                className={`w-full text-left px-4 py-2.5 rounded-xl font-medium transition flex items-center gap-3 text-xs ${
+                                    activeTab === 'wisuda' ? 'bg-emerald-800 text-white shadow-md font-bold' : 'text-emerald-100 hover:bg-emerald-800/50'
+                                }`}
+                            >
+                                <i className="fas fa-award w-4 text-center text-amber-300"></i>
+                                <span>Otorisasi Khotmil Qur'an</span>
+                                <span className="ml-auto text-[10px] bg-amber-500 text-amber-950 font-bold px-2 py-0.5 rounded-full">
+                                    {santriList.filter(s => s.totalHafalanJuz >= 25 || s.status === 'Mutakharij').length} Calon
+                                </span>
+                            </button>
+
+                            <button 
+                                onClick={() => setActiveTab('hafalan')}
+                                className={`w-full text-left px-4 py-2.5 rounded-xl font-medium transition flex items-center gap-3 text-xs ${
+                                    activeTab === 'hafalan' ? 'bg-emerald-800 text-white shadow-md font-bold' : 'text-emerald-100 hover:bg-emerald-800/50'
+                                }`}
+                            >
+                                <i className="fas fa-book-quran w-4 text-center text-teal-300"></i>
+                                <span>Peta 30 Juz Santri</span>
+                            </button>
+
+                            <button 
+                                onClick={() => setActiveTab('setoran')}
+                                className={`w-full text-left px-4 py-2.5 rounded-xl font-medium transition flex items-center gap-3 text-xs ${
+                                    activeTab === 'setoran' ? 'bg-emerald-800 text-white shadow-md font-bold' : 'text-emerald-100 hover:bg-emerald-800/50'
+                                }`}
+                            >
+                                <i className="fas fa-clipboard-check w-4 text-center text-blue-300"></i>
+                                <span>Audit &amp; Rekap Nilai Tasmi'</span>
+                                <span className="ml-auto text-[10px] bg-emerald-700 px-2 py-0.5 rounded-full">{setoranList.length}</span>
+                            </button>
+
+                            <button 
+                                onClick={() => setActiveTab('kelas_mapel')}
+                                className={`w-full text-left px-4 py-2.5 rounded-xl font-medium transition flex items-center gap-3 text-xs ${
+                                    activeTab === 'kelas_mapel' ? 'bg-emerald-800 text-white shadow-md font-bold' : 'text-emerald-100 hover:bg-emerald-800/50'
+                                }`}
+                            >
+                                <i className="fas fa-graduation-cap w-4 text-center text-amber-300"></i>
+                                <span>Kelas &amp; Beban Asatidz</span>
+                                <span className="ml-auto text-[10px] bg-emerald-700 px-2 py-0.5 rounded-full">{kelasList.length} Kls</span>
+                            </button>
+
+                            <button 
+                                onClick={() => setActiveTab('santri')}
+                                className={`w-full text-left px-4 py-2.5 rounded-xl font-medium transition flex items-center gap-3 text-xs ${
+                                    activeTab === 'santri' ? 'bg-emerald-800 text-white shadow-md font-bold' : 'text-emerald-100 hover:bg-emerald-800/50'
+                                }`}
+                            >
+                                <i className="fas fa-users-cog w-4 text-center text-emerald-300"></i>
+                                <span>Data Lengkap Santri</span>
+                                <span className="ml-auto text-[10px] bg-emerald-700 px-2 py-0.5 rounded-full">{santriList.length}</span>
+                            </button>
+
+                            <button 
+                                onClick={() => setActiveTab('halaqah')}
+                                className={`w-full text-left px-4 py-2.5 rounded-xl font-medium transition flex items-center gap-3 text-xs ${
+                                    activeTab === 'halaqah' ? 'bg-emerald-800 text-white shadow-md font-bold' : 'text-emerald-100 hover:bg-emerald-800/50'
+                                }`}
+                            >
+                                <i className="fas fa-mosque w-4 text-center text-amber-200"></i>
+                                <span>Kesehatan Halaqah</span>
+                            </button>
+                        </>
+                    )}
+
                     {/* NAVIGASI KHUSUS ADMIN */}
                     {isAdmin && (
                         <>
@@ -1062,6 +1260,26 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                             >
                                 <i className="fas fa-book-quran w-4 text-center text-teal-300"></i>
                                 <span>Peta 30 Juz Santri</span>
+                            </button>
+
+                            <button 
+                                onClick={() => setActiveTab('taujiyah')}
+                                className={`w-full text-left px-4 py-2.5 rounded-xl font-medium transition flex items-center gap-3 text-xs ${
+                                    activeTab === 'taujiyah' ? 'bg-emerald-800 text-white shadow-md font-bold' : 'text-emerald-100 hover:bg-emerald-800/50'
+                                }`}
+                            >
+                                <i className="fas fa-feather-alt w-4 text-center text-purple-300"></i>
+                                <span>Taujiyah Pengasuh</span>
+                            </button>
+
+                            <button 
+                                onClick={() => setActiveTab('wisuda')}
+                                className={`w-full text-left px-4 py-2.5 rounded-xl font-medium transition flex items-center gap-3 text-xs ${
+                                    activeTab === 'wisuda' ? 'bg-emerald-800 text-white shadow-md font-bold' : 'text-emerald-100 hover:bg-emerald-800/50'
+                                }`}
+                            >
+                                <i className="fas fa-award w-4 text-center text-amber-300"></i>
+                                <span>Kelulusan &amp; Wisuda</span>
                             </button>
 
                             <button 
@@ -1181,6 +1399,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                                 <span>Santri Halaqah Binaan</span>
                                 <span className="ml-auto text-[10px] bg-emerald-700 px-2 py-0.5 rounded-full">{santriList.length}</span>
                             </button>
+
+                            <button 
+                                onClick={() => setActiveTab('taujiyah')}
+                                className={`w-full text-left px-4 py-2.5 rounded-xl font-medium transition flex items-center gap-3 text-xs ${
+                                    activeTab === 'taujiyah' ? 'bg-emerald-800 text-white shadow-md font-bold' : 'text-emerald-100 hover:bg-emerald-800/50'
+                                }`}
+                            >
+                                <i className="fas fa-feather-alt w-4 text-center text-purple-300"></i>
+                                <span>Taujiyah Pengasuh</span>
+                            </button>
                         </>
                     )}
 
@@ -1251,6 +1479,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                                 <i className="fas fa-certificate w-4 text-center text-amber-300"></i>
                                 <span>Riwayat Nilai Tasmi'</span>
                             </button>
+
+                            <button 
+                                onClick={() => setActiveTab('taujiyah')}
+                                className={`w-full text-left px-4 py-2.5 rounded-xl font-medium transition flex items-center gap-3 text-xs ${
+                                    activeTab === 'taujiyah' ? 'bg-emerald-800 text-white shadow-md font-bold' : 'text-emerald-100 hover:bg-emerald-800/50'
+                                }`}
+                            >
+                                <i className="fas fa-feather-alt w-4 text-center text-purple-300"></i>
+                                <span>Taujiyah &amp; Nasihat Kyai</span>
+                            </button>
                         </>
                     )}
                 </nav>
@@ -1258,12 +1496,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                 <div className="p-4 border-t border-emerald-800/60 bg-emerald-950/40">
                     <div className="flex items-center gap-3 mb-3">
                         <div className="w-9 h-9 rounded-full bg-emerald-700 flex items-center justify-center font-bold text-white text-sm">
-                            {isAdmin ? 'M' : (user?.nama ? user.nama.charAt(0) : 'U')}
+                            {isAdmin ? 'M' : isPengasuh ? 'K' : (user?.nama ? user.nama.charAt(0) : 'U')}
                         </div>
                         <div className="overflow-hidden">
-                            <p className="text-xs font-bold text-white truncate">{isAdmin ? 'M. Asngad' : (user?.nama || 'Pengguna')}</p>
+                            <p className="text-xs font-bold text-white truncate">
+                                {isAdmin ? 'M. Asngad' : isPengasuh ? (user?.nama || 'K.H. Mohammad Sangidun, S.Ag., Al-Hafidz') : (user?.nama || 'Pengguna')}
+                            </p>
                             <p className="text-[11px] text-emerald-300 truncate">
-                                {isAdmin ? 'Administrator Utama' : isUstadz ? 'Ustadz Pembina' : currentSantri?.kelas || 'Santri'}
+                                {isAdmin ? 'Administrator Utama' : isPengasuh ? 'Pengasuh Pondok Pesantren' : isUstadz ? 'Ustadz Pembina' : currentSantri?.kelas || 'Santri'}
                             </p>
                         </div>
                     </div>
@@ -1287,8 +1527,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                     <h1 className="font-arab text-xl font-bold">دار الكمال</h1>
                 </div>
                 <div className="flex items-center gap-2">
-                    <span className="text-xs bg-emerald-800 px-2.5 py-1 rounded-full text-emerald-200 font-semibold truncate max-w-[120px]">
-                        {isAdmin ? 'M. Asngad' : isUstadz ? 'Ustadz' : user?.nama?.split(' ')[0] || 'Santri'}
+                    <span className="text-xs bg-emerald-800 px-2.5 py-1 rounded-full text-emerald-200 font-semibold truncate max-w-[130px]">
+                        {isAdmin ? 'M. Asngad' : isPengasuh ? 'K.H. Sangidun' : isUstadz ? 'Ustadz' : user?.nama?.split(' ')[0] || 'Santri'}
                     </span>
                     <button 
                         onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -1303,8 +1543,30 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
             {mobileMenuOpen && (
                 <div className="md:hidden bg-emerald-950 text-white px-4 py-3 space-y-2 border-b border-emerald-800 z-30 text-xs">
                     <button onClick={() => { setActiveTab('dashboard'); setMobileMenuOpen(false); }} className="w-full text-left py-2 px-3 rounded hover:bg-emerald-900 flex items-center gap-2">
-                        <i className="fas fa-home w-5"></i> Dashboard
+                        <i className="fas fa-home w-5"></i> Dashboard {isPengasuh ? 'Pengasuhan' : ''}
                     </button>
+                    {isPengasuh && (
+                        <>
+                            <button onClick={() => { setActiveTab('taujiyah'); setMobileMenuOpen(false); }} className="w-full text-left py-2 px-3 rounded hover:bg-emerald-900 flex items-center gap-2 text-amber-300">
+                                <i className="fas fa-feather-alt w-5"></i> Taujiyah &amp; Mau'izhah
+                            </button>
+                            <button onClick={() => { setActiveTab('wisuda'); setMobileMenuOpen(false); }} className="w-full text-left py-2 px-3 rounded hover:bg-emerald-900 flex items-center gap-2 text-amber-400">
+                                <i className="fas fa-award w-5"></i> Otorisasi Wisuda 30 Juz
+                            </button>
+                            <button onClick={() => { setActiveTab('hafalan'); setMobileMenuOpen(false); }} className="w-full text-left py-2 px-3 rounded hover:bg-emerald-900 flex items-center gap-2 text-teal-300">
+                                <i className="fas fa-book-quran w-5"></i> Peta 30 Juz Santri
+                            </button>
+                            <button onClick={() => { setActiveTab('setoran'); setMobileMenuOpen(false); }} className="w-full text-left py-2 px-3 rounded hover:bg-emerald-900 flex items-center gap-2">
+                                <i className="fas fa-clipboard-check w-5"></i> Audit Nilai Tasmi'
+                            </button>
+                            <button onClick={() => { setActiveTab('kelas_mapel'); setMobileMenuOpen(false); }} className="w-full text-left py-2 px-3 rounded hover:bg-emerald-900 flex items-center gap-2">
+                                <i className="fas fa-graduation-cap w-5"></i> Kelas &amp; Beban Asatidz
+                            </button>
+                            <button onClick={() => { setActiveTab('santri'); setMobileMenuOpen(false); }} className="w-full text-left py-2 px-3 rounded hover:bg-emerald-900 flex items-center gap-2">
+                                <i className="fas fa-users w-5"></i> Data Lengkap Santri
+                            </button>
+                        </>
+                    )}
                     {isAdmin && (
                         <>
                             <button onClick={() => { setActiveTab('santri'); setMobileMenuOpen(false); }} className="w-full text-left py-2 px-3 rounded hover:bg-emerald-900 flex items-center gap-2">
@@ -1312,6 +1574,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                             </button>
                             <button onClick={() => { setActiveTab('kelas_mapel'); setMobileMenuOpen(false); }} className="w-full text-left py-2 px-3 rounded hover:bg-emerald-900 flex items-center gap-2 text-amber-300">
                                 <i className="fas fa-graduation-cap w-5"></i> Kelas &amp; Mata Pelajaran
+                            </button>
+                            <button onClick={() => { setActiveTab('taujiyah'); setMobileMenuOpen(false); }} className="w-full text-left py-2 px-3 rounded hover:bg-emerald-900 flex items-center gap-2 text-purple-300">
+                                <i className="fas fa-feather-alt w-5"></i> Taujiyah Pengasuh
+                            </button>
+                            <button onClick={() => { setActiveTab('wisuda'); setMobileMenuOpen(false); }} className="w-full text-left py-2 px-3 rounded hover:bg-emerald-900 flex items-center gap-2 text-amber-400">
+                                <i className="fas fa-award w-5"></i> Kelulusan &amp; Wisuda
                             </button>
                             <button onClick={() => { setActiveTab('halaqah'); setMobileMenuOpen(false); }} className="w-full text-left py-2 px-3 rounded hover:bg-emerald-900 flex items-center gap-2">
                                 <i className="fas fa-mosque w-5"></i> Manajemen Halaqah
@@ -1376,31 +1644,36 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                             </span>
                             <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
                                 isAdmin ? 'bg-amber-100 text-amber-900 border border-amber-300' :
+                                isPengasuh ? 'bg-purple-100 text-purple-900 border border-purple-300' :
                                 isUstadz ? 'bg-blue-100 text-blue-900 border border-blue-300' :
                                 'bg-emerald-100 text-emerald-900 border border-emerald-300'
                             }`}>
-                                Peran: {isAdmin ? 'Administrator (M. Asngad)' : isUstadz ? 'Ustadz Pembina (Musyrif)' : 'Santri Tahfidz (Pelajar)'}
+                                Peran: {isAdmin ? 'Administrator (M. Asngad)' : isPengasuh ? 'Pengasuh (K.H. Mohammad Sangidun)' : isUstadz ? 'Ustadz Pembina (Musyrif)' : 'Santri Tahfidz (Pelajar)'}
                             </span>
                         </div>
                         <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                            {activeTab === 'dashboard' && (isAdmin ? 'Dashboard Eksekutif Lembaga' : isUstadz ? 'Beranda Pembinaan Halaqah' : 'Ruang Belajar & Hafalan Pribadi')}
+                            {activeTab === 'dashboard' && (isAdmin ? 'Dashboard Eksekutif Lembaga' : isPengasuh ? 'Maktab Pengasuhan & Kebijakan Tahfidz' : isUstadz ? 'Beranda Pembinaan Halaqah' : 'Ruang Belajar & Hafalan Pribadi')}
+                            {activeTab === 'taujiyah' && 'Taujiyah & Mau\'izhah Hasanah Pengasuh'}
+                            {activeTab === 'wisuda' && 'Otorisasi & Pengesahan Khotmil Qur\'an 30 Juz'}
                             {activeTab === 'jurnal' && (isSantri ? 'Jurnal Mutaba\'ah Belajar Mandiri' : 'Monitoring Mutaba\'ah Jurnal Santri')}
                             {activeTab === 'rencana' && (isSantri ? 'Rencana & Target Setoran ke Ustadz' : 'Verifikasi & Approval Rencana Setoran')}
-                            {activeTab === 'hafalan' && (isSantri ? 'Peta Progres 30 Juz Saya' : 'Validasi & Otorisasi 30 Juz Santri')}
-                            {activeTab === 'santri' && (isAdmin ? 'Kelola Master Data Santri' : 'Santri Halaqah Binaan')}
+                            {activeTab === 'hafalan' && (isSantri ? 'Peta Progres 30 Juz Saya' : 'Peta & Validasi 30 Juz Santri')}
+                            {activeTab === 'santri' && (isAdmin ? 'Kelola Master Data Santri' : isPengasuh ? 'Data Santri & Rekam Jejak Tahfidz' : 'Santri Halaqah Binaan')}
                             {activeTab === 'setoran' && (isSantri ? 'Riwayat Evaluasi Nilai Tasmi\'' : isUstadz ? 'Catatan Nilai Setoran & Tasmi\' (CRUD)' : 'Audit & Rekapitulasi Setoran')}
                             {activeTab === 'halaqah' && 'Manajemen Halaqah & Asatidz Pembina'}
                             {activeTab === 'pengaturan' && 'Status Database & Pengaturan Cloud'}
+                            {activeTab === 'kelas_mapel' && 'Manajemen Kelas & Beban Asatidz'}
                         </h2>
                         <p className="text-xs text-gray-500 mt-0.5">
                             {isAdmin && 'Kelola master data santri, halaqah, monitoring institusi, dan rekapitulasi audit tahfidz.'}
+                            {isPengasuh && 'Pengawasan eksekutif, pembinaan ruhiyah taujiyah, serta pengesahan ijazah sanad Khotmil Qur\'an 30 Juz.'}
                             {isUstadz && 'Input setoran tasmi\', penilaian tajwid & makhorij, pengesahan kelulusan juz, dan approval rencana.'}
                             {isSantri && 'Pantau pencapaian 30 juz, ajukan rencana target setoran, dan catat jurnal muroja\'ah harian.'}
                         </p>
                     </div>
 
                     <div className="flex items-center gap-3 flex-wrap">
-                        {/* ROLE SWITCHER WIDGET: Memudahkan verifikasi fungsionalitas tiap peran */}
+                        {/* ROLE SWITCHER WIDGET: Memudahkan verifikasi 4 peran ekosistem pesantren */}
                         <div className="flex items-center bg-gray-100 p-1 rounded-xl border border-gray-200 text-xs shadow-2xs">
                             <span className="text-[11px] font-bold text-gray-600 px-2 flex items-center gap-1">
                                 <i className="fas fa-sync-alt text-gray-400"></i> Mode Peran:
@@ -1413,6 +1686,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                                 title="Beralih ke tampilan Administrator Pesantren"
                             >
                                 <i className="fas fa-user-shield mr-1"></i> Admin
+                            </button>
+                            <button
+                                onClick={() => { setCurrentRoleOverride('pengasuh'); setActiveTab('dashboard'); }}
+                                className={`px-2.5 py-1 rounded-lg font-bold text-xs transition ${
+                                    isPengasuh ? 'bg-purple-600 text-white shadow-xs' : 'text-gray-600 hover:text-gray-900'
+                                }`}
+                                title="Beralih ke tampilan Pengasuh Pondok Pesantren (Kyai)"
+                            >
+                                <i className="fas fa-mosque mr-1"></i> Pengasuh
                             </button>
                             <button
                                 onClick={() => { setCurrentRoleOverride('ustadz'); setActiveTab('dashboard'); }}
@@ -1458,6 +1740,25 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                         )}
 
                         {/* Quick Action Buttons Sesuai Peran */}
+                        {isPengasuh && (
+                            <>
+                                <button
+                                    onClick={() => setIsAddTaujiyahOpen(true)}
+                                    className="bg-purple-700 hover:bg-purple-800 text-white px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition"
+                                >
+                                    <i className="fas fa-feather-alt"></i>
+                                    <span>Terbitkan Taujiyah</span>
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('wisuda')}
+                                    className="bg-amber-600 hover:bg-amber-700 text-white px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs transition"
+                                >
+                                    <i className="fas fa-award"></i>
+                                    <span>Otorisasi Khotmil Qur'an</span>
+                                </button>
+                            </>
+                        )}
+
                         {isSantri && (
                             <>
                                 <button
@@ -1521,6 +1822,273 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                 {/* TAB 1: DASHBOARD (Santri-focused & General) */}
                 {activeTab === 'dashboard' && (
                     <div className="space-y-6">
+                        {/* ======================================================== */}
+                        {/* VIEW 0: MAKTAB PENGASUHAN PESANTREN (KH. SYIHABUDDIN)   */}
+                        {/* ======================================================== */}
+                        {isPengasuh && (
+                            <div className="space-y-6 animate-fade-in">
+                                {/* Banner Maktab Pengasuhan */}
+                                <div className="bg-gradient-to-r from-purple-950 via-indigo-950 to-emerald-950 rounded-2xl p-6 text-white shadow-md relative overflow-hidden border border-purple-800">
+                                    <div className="relative z-10">
+                                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                                            <span className="bg-purple-500/20 text-purple-300 border border-purple-500/40 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5">
+                                                <i className="fas fa-mosque text-purple-300"></i> Maktab Pengasuhan Pesantren
+                                            </span>
+                                            <span className="bg-white/10 px-3 py-1 rounded-full text-xs font-medium text-purple-200">
+                                                Tahun Ajaran 1447-1448 H / 2026 M
+                                            </span>
+                                            <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 px-3 py-1 rounded-full text-xs font-bold">
+                                                Pimpinan Lembaga &amp; Pembina Sanad
+                                            </span>
+                                        </div>
+                                        <h3 className="text-xl sm:text-2xl font-bold">
+                                            Ahlan wa Sahlan, K.H. Mohammad Sangidun, S.Ag., Al-Hafidz!
+                                        </h3>
+                                        <p className="text-purple-100 text-xs sm:text-sm mt-1 max-w-2xl leading-relaxed">
+                                            Maktab pengawasan mutu tahfidz, penerbitan amanat ruhiyah (taujiyah) kepada asatidz &amp; santri, serta majelis pengesahan kelulusan Khotmil Qur'an 30 Juz dan sanad qiro'ah.
+                                        </p>
+                                    </div>
+                                    <div className="absolute right-4 -bottom-6 text-white/5 font-arab text-9xl pointer-events-none select-none">
+                                        رعاية المعهد
+                                    </div>
+                                </div>
+
+                                {wisudaSuccessMsg && (
+                                    <div className="p-4 bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-xl text-xs flex items-center justify-between shadow-xs">
+                                        <span className="font-bold flex items-center gap-2">
+                                            <i className="fas fa-certificate text-emerald-600 text-base"></i> {wisudaSuccessMsg}
+                                        </span>
+                                        <button onClick={() => setWisudaSuccessMsg('')} className="text-emerald-700 hover:text-emerald-900 text-xs font-bold">
+                                            <i className="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* Pengasuh Metrics */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs flex items-center justify-between">
+                                        <div>
+                                            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">Calon Wisudawan 30 Juz</span>
+                                            <div className="text-2xl font-bold text-amber-600 mt-1">
+                                                {santriList.filter(s => s.totalHafalanJuz >= 25 || s.status === 'Mutakharij').length} <span className="text-xs font-normal text-gray-500">Santri</span>
+                                            </div>
+                                            <p className="text-[11px] text-amber-700 font-semibold mt-1">
+                                                {santriList.filter(s => s.totalHafalanJuz === 30 || s.status === 'Mutakharij').length} Siap Diwisuda
+                                            </p>
+                                        </div>
+                                        <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl shadow-inner">
+                                            <i className="fas fa-award"></i>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs flex items-center justify-between">
+                                        <div>
+                                            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">Total Santri Tahfidz</span>
+                                            <div className="text-2xl font-bold text-gray-900 mt-1">
+                                                {santriList.length} <span className="text-xs font-normal text-gray-500">Santri</span>
+                                            </div>
+                                            <p className="text-[11px] text-emerald-700 font-semibold mt-1">
+                                                {santriList.filter(s => s.status === 'Aktif').length} Santri Aktif Mutaba'ah
+                                            </p>
+                                        </div>
+                                        <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center text-xl shadow-inner">
+                                            <i className="fas fa-users"></i>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs flex items-center justify-between">
+                                        <div>
+                                            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">Amanat Ruhiyah (Taujiyah)</span>
+                                            <div className="text-2xl font-bold text-purple-700 mt-1">
+                                                {taujiyahList.length} <span className="text-xs font-normal text-gray-500">Nasihat</span>
+                                            </div>
+                                            <p className="text-[11px] text-purple-700 font-semibold mt-1">
+                                                Dipublikasi ke Seluruh Akun
+                                            </p>
+                                        </div>
+                                        <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center text-xl shadow-inner">
+                                            <i className="fas fa-feather-alt"></i>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs flex items-center justify-between">
+                                        <div>
+                                            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">Rombel &amp; Asatidz Pengampu</span>
+                                            <div className="text-2xl font-bold text-blue-700 mt-1">
+                                                {kelasList.length} <span className="text-xs font-normal text-gray-500">Kelas / {PESANTREN_HALAQAH_LIST.length} Halaqah</span>
+                                            </div>
+                                            <p className="text-[11px] text-blue-700 font-semibold mt-1">
+                                                {mapelList.length} Mata Pelajaran Berjalan
+                                            </p>
+                                        </div>
+                                        <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center text-xl shadow-inner">
+                                            <i className="fas fa-chalkboard-teacher"></i>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Maktab Pengasuhan Dua Kolom: Taujiyah Terkini & Calon Wisudawan */}
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                    {/* Taujiyah Terkini */}
+                                    <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs flex flex-col justify-between">
+                                        <div>
+                                            <div className="flex justify-between items-center mb-4 pb-3 border-b border-gray-100">
+                                                <h4 className="font-bold text-gray-800 text-sm flex items-center gap-2">
+                                                    <i className="fas fa-feather-alt text-purple-600"></i> Amanat &amp; Taujiyah Pengasuh Terkini
+                                                </h4>
+                                                <button onClick={() => setActiveTab('taujiyah')} className="text-xs text-purple-700 font-bold hover:underline">
+                                                    Kelola Semua ({taujiyahList.length})
+                                                </button>
+                                            </div>
+
+                                            {taujiyahList.length === 0 ? (
+                                                <div className="p-6 text-center text-gray-400 text-xs bg-gray-50 rounded-xl">
+                                                    Belum ada taujiyah yang diterbitkan.
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-3">
+                                                    {taujiyahList.slice(0, 2).map(tj => (
+                                                        <div key={tj.id} className="p-4 bg-purple-50/50 rounded-xl border border-purple-100 text-xs">
+                                                            <div className="flex justify-between items-start gap-2">
+                                                                <div>
+                                                                    <span className="text-[10px] bg-purple-200 text-purple-900 font-bold px-2 py-0.5 rounded-full">
+                                                                        {tj.tema}
+                                                                    </span>
+                                                                    <h5 className="font-bold text-gray-900 text-sm mt-1.5">{tj.judul}</h5>
+                                                                    <p className="text-gray-600 line-clamp-3 mt-1 leading-relaxed">
+                                                                        "{tj.isi}"
+                                                                    </p>
+                                                                    <div className="mt-2 text-[10px] text-gray-400 flex items-center gap-2">
+                                                                        <span><i className="fas fa-calendar-alt mr-1"></i> {tj.tanggal}</span>
+                                                                        <span>•</span>
+                                                                        <span><i className="fas fa-user-tie mr-1"></i> {tj.pemberiTaujiyah}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="flex gap-2 mt-4">
+                                            <button
+                                                onClick={() => setIsAddTaujiyahOpen(true)}
+                                                className="flex-1 bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 shadow-xs"
+                                            >
+                                                <i className="fas fa-plus"></i> Terbitkan Taujiyah Baru
+                                            </button>
+                                            <button
+                                                onClick={() => setActiveTab('taujiyah')}
+                                                className="px-4 bg-purple-50 hover:bg-purple-100 text-purple-800 text-xs font-bold py-2.5 rounded-xl transition border border-purple-200"
+                                            >
+                                                Semua Nasihat
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Calon Khotimin 30 Juz & Pengesahan Wisuda */}
+                                    <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs flex flex-col justify-between">
+                                        <div>
+                                            <div className="flex justify-between items-center mb-4 pb-3 border-b border-gray-100">
+                                                <h4 className="font-bold text-gray-800 text-sm flex items-center gap-2">
+                                                    <i className="fas fa-award text-amber-500"></i> Calon Khotimin &amp; Otorisasi Wisuda
+                                                </h4>
+                                                <button onClick={() => setActiveTab('wisuda')} className="text-xs text-amber-700 font-bold hover:underline">
+                                                    Buka Panel Wisuda
+                                                </button>
+                                            </div>
+
+                                            <div className="space-y-3">
+                                                {santriList
+                                                    .filter(s => s.totalHafalanJuz >= 20 || s.status === 'Mutakharij')
+                                                    .sort((a, b) => b.totalHafalanJuz - a.totalHafalanJuz)
+                                                    .slice(0, 3)
+                                                    .map(cand => {
+                                                        return (
+                                                            <div key={cand.id} className="p-3 bg-amber-50/60 rounded-xl border border-amber-200 text-xs flex items-center justify-between gap-3">
+                                                                <div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="font-bold text-gray-900">{cand.nama}</span>
+                                                                        <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
+                                                                            {cand.totalHafalanJuz} / 30 Juz
+                                                                        </span>
+                                                                    </div>
+                                                                    <p className="text-[11px] text-gray-500 mt-0.5">
+                                                                        NIS: {cand.nis} • {cand.kelas} • {cand.musyrif}
+                                                                    </p>
+                                                                    <span className="text-[10px] font-semibold text-amber-800 mt-1 block">
+                                                                        Status: {cand.status === 'Mutakharij' ? 'Telah Sah Diwisuda Pengasuh' : cand.totalHafalanJuz >= 30 ? 'Siap Diotorisasi Pengasuh' : 'Menuju Khotmil Qur\'an'}
+                                                                    </span>
+                                                                </div>
+
+                                                                {cand.status !== 'Mutakharij' && cand.totalHafalanJuz >= 25 ? (
+                                                                    <button
+                                                                        onClick={() => handleSahkanWisuda(cand)}
+                                                                        className="bg-amber-600 hover:bg-amber-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition shadow-2xs shrink-0 flex items-center gap-1"
+                                                                    >
+                                                                        <i className="fas fa-stamp"></i> Sahkan
+                                                                    </button>
+                                                                ) : (
+                                                                    <button
+                                                                        onClick={() => handleOpenRaport(cand)}
+                                                                        className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 font-bold px-2.5 py-1.5 rounded-lg text-xs transition shadow-2xs shrink-0 flex items-center gap-1"
+                                                                    >
+                                                                        <i className="fas fa-scroll text-amber-600"></i> Syahadah
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            onClick={() => setActiveTab('wisuda')}
+                                            className="mt-4 w-full bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold py-2.5 rounded-xl transition border border-amber-200 text-center flex items-center justify-center gap-1.5"
+                                        >
+                                            <i className="fas fa-graduation-cap"></i> Masuk ke Majelis Otorisasi Wisuda Sanad 30 Juz
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Ringkasan Kesehatan Halaqah & Asatidz */}
+                                <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs">
+                                    <div className="flex justify-between items-center mb-4 pb-3 border-b border-gray-100">
+                                        <h4 className="font-bold text-gray-800 text-sm flex items-center gap-2">
+                                            <i className="fas fa-kaaba text-emerald-700"></i> Pengawasan Halaqah &amp; Beban Pembimbingan Asatidz
+                                        </h4>
+                                        <button onClick={() => setActiveTab('halaqah')} className="text-xs text-emerald-700 font-bold hover:underline">
+                                            Buka Manajemen Halaqah
+                                        </button>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                        {PESANTREN_HALAQAH_LIST.map((hq, idx) => {
+                                            const hqSantri = santriList.filter(s => s.halaqah.toLowerCase().includes(hq.nama.toLowerCase().replace('halaqah ', '')));
+                                            const hqTotalJuz = hqSantri.reduce((acc, curr) => acc + curr.totalHafalanJuz, 0);
+                                            return (
+                                                <div key={idx} className="p-4 rounded-xl border border-gray-100 bg-gray-50 hover:bg-emerald-50/40 transition">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <span className="text-xs font-bold text-gray-900">{hq.nama}</span>
+                                                        <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
+                                                            {hqSantri.length} Santri
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-[11px] text-gray-600">
+                                                        Musyrif: <strong>{hq.musyrif}</strong>
+                                                    </p>
+                                                    <div className="mt-2 text-[10px] text-gray-500 flex justify-between">
+                                                        <span>Akumulasi: {hqTotalJuz} Juz</span>
+                                                        <span className="font-semibold text-emerald-700">Aktif Halaqah</span>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {/* ======================================================== */}
                         {/* VIEW 1: DASHBOARD EKSEKUTIF ADMINISTRATOR PESANTREN      */}
                         {/* ======================================================== */}
@@ -1763,6 +2331,39 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                                     </div>
                                 </div>
 
+                                {/* Nasihat & Taujiyah Pengasuh untuk Asatidz */}
+                                {taujiyahList.length > 0 && (
+                                    <div className="p-4 bg-gradient-to-r from-purple-950 via-indigo-900 to-purple-900 text-white rounded-2xl border border-purple-700/80 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                        <div className="flex items-start gap-3">
+                                            <div className="w-10 h-10 rounded-xl bg-purple-800 text-amber-300 flex items-center justify-center shrink-0 text-base shadow-inner">
+                                                <i className="fas fa-feather-alt"></i>
+                                            </div>
+                                            <div>
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <span className="text-[10px] bg-amber-400 text-amber-950 font-bold px-2 py-0.5 rounded-full uppercase">
+                                                        Amanat Pengasuh ({taujiyahList[0].tema})
+                                                    </span>
+                                                    <span className="text-xs font-bold text-purple-200">
+                                                        {taujiyahList[0].judul}
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs text-purple-100 italic mt-1 leading-relaxed">
+                                                    "{taujiyahList[0].isi}"
+                                                </p>
+                                                <span className="text-[10px] text-purple-300 font-semibold block mt-1">
+                                                    — {taujiyahList[0].pemberiTaujiyah}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => setActiveTab('taujiyah')}
+                                            className="text-xs bg-purple-800/80 hover:bg-purple-700 text-amber-300 border border-purple-600 px-3 py-1.5 rounded-xl font-bold transition shrink-0"
+                                        >
+                                            Baca Semua Nasihat
+                                        </button>
+                                    </div>
+                                )}
+
                                 {/* Ustadz Metrics */}
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                     <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs flex items-center justify-between">
@@ -1954,6 +2555,39 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                                         القرآن
                                     </div>
                                 </div>
+
+                                {/* Nasihat & Taujiyah Kyai Pengasuh untuk Santri */}
+                                {taujiyahList.length > 0 && (
+                                    <div className="p-4 bg-gradient-to-r from-purple-950 via-indigo-900 to-purple-900 text-white rounded-2xl border border-purple-700/80 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                        <div className="flex items-start gap-3">
+                                            <div className="w-10 h-10 rounded-xl bg-purple-800 text-amber-300 flex items-center justify-center shrink-0 text-base shadow-inner">
+                                                <i className="fas fa-feather-alt"></i>
+                                            </div>
+                                            <div>
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <span className="text-[10px] bg-amber-400 text-amber-950 font-bold px-2 py-0.5 rounded-full uppercase">
+                                                        Nasihat Kyai Pengasuh ({taujiyahList[0].tema})
+                                                    </span>
+                                                    <span className="text-xs font-bold text-purple-200">
+                                                        {taujiyahList[0].judul}
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs text-purple-100 italic mt-1 leading-relaxed">
+                                                    "{taujiyahList[0].isi}"
+                                                </p>
+                                                <span className="text-[10px] text-purple-300 font-semibold block mt-1">
+                                                    — {taujiyahList[0].pemberiTaujiyah}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => setActiveTab('taujiyah')}
+                                            className="text-xs bg-purple-800/80 hover:bg-purple-700 text-amber-300 border border-purple-600 px-3 py-1.5 rounded-xl font-bold transition shrink-0"
+                                        >
+                                            Baca Semua Nasihat
+                                        </button>
+                                    </div>
+                                )}
 
                                 {/* Interactive Widget: Penanda Terakhir Baca (Bookmark) & Target Santri */}
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -3544,6 +4178,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                 {activeTab === 'kelas_mapel' && (
                     <KelasMapelModule 
                         isAdmin={isAdmin}
+                        isPengasuh={isPengasuh}
                         isUstadz={isUstadz}
                         isSantri={isSantri}
                         user={user}
@@ -3559,6 +4194,351 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                         }}
                         onNavigateTab={(tab) => setActiveTab(tab)}
                     />
+                )}
+
+                {/* TAB 10: TAUJIYAH & MAU'IZHAH HASANAH PENGASUH */}
+                {activeTab === 'taujiyah' && (
+                    <div className="space-y-6 animate-fade-in">
+                        {/* Header Banner */}
+                        <div className="bg-gradient-to-r from-purple-950 via-indigo-950 to-emerald-950 rounded-2xl p-6 text-white shadow-md relative overflow-hidden border border-purple-800">
+                            <div className="relative z-10">
+                                <div className="flex flex-wrap items-center gap-2 mb-2">
+                                    <span className="bg-purple-500/20 text-purple-300 border border-purple-500/40 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5">
+                                        <i className="fas fa-feather-alt text-amber-300"></i> Amanat Ruhiyah &amp; Mau'izhah Hasanah
+                                    </span>
+                                    <span className="bg-white/10 px-3 py-1 rounded-full text-xs font-medium text-purple-200">
+                                        Pondok Pesantren Darul Kamal
+                                    </span>
+                                </div>
+                                <h3 className="text-xl sm:text-2xl font-bold">
+                                    Taujiyah &amp; Nasihat Pengasuh Pesantren
+                                </h3>
+                                <p className="text-purple-100 text-xs sm:text-sm mt-1 max-w-2xl leading-relaxed">
+                                    Bimbingan akhlaqul karimah bagi para penghafal Al-Qur'an, adab hamalatul Qur'an, metode muroja'ah mutqin, dan pesan-pesan pembinaan dari K.H. Mohammad Sangidun, S.Ag., Al-Hafidz.
+                                </p>
+                            </div>
+                            <div className="absolute right-4 -bottom-6 text-white/5 font-arab text-9xl pointer-events-none select-none">
+                                الموعظة
+                            </div>
+                        </div>
+
+                        {/* Controls Bar */}
+                        <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-bold text-gray-700 flex items-center gap-1.5">
+                                    <i className="fas fa-filter text-purple-600"></i> Tema:
+                                </span>
+                                {['Semua', 'Adab & Akhlaq Al-Qur\'an', 'Metode Muroja\'ah Mutqin', 'Keutamaan Khotmil Qur\'an', 'Nasihat Musyrif'].map(tm => (
+                                    <button
+                                        key={tm}
+                                        onClick={() => setFilterTemaTaujiyah(tm)}
+                                        className={`px-3 py-1.5 rounded-xl font-bold transition text-xs ${
+                                            filterTemaTaujiyah === tm
+                                                ? 'bg-purple-700 text-white shadow-2xs'
+                                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                        }`}
+                                    >
+                                        {tm}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {(isPengasuh || isAdmin) && (
+                                <button
+                                    onClick={() => setIsAddTaujiyahOpen(true)}
+                                    className="bg-purple-700 hover:bg-purple-800 text-white font-bold px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-xs transition shrink-0"
+                                >
+                                    <i className="fas fa-plus"></i> Terbitkan Taujiyah Baru
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Taujiyah List */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                            {taujiyahList
+                                .filter(t => filterTemaTaujiyah === 'Semua' || t.tema === filterTemaTaujiyah)
+                                .map(tj => (
+                                    <div key={tj.id} className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs flex flex-col justify-between hover:border-purple-300 transition group">
+                                        <div>
+                                            <div className="flex items-center justify-between gap-2 mb-3">
+                                                <span className="text-[10px] bg-purple-100 text-purple-900 border border-purple-200 font-bold px-2.5 py-0.5 rounded-full">
+                                                    {tj.tema}
+                                                </span>
+                                                <span className="text-[10px] bg-emerald-50 text-emerald-800 font-bold px-2 py-0.5 rounded">
+                                                    <i className="fas fa-check-circle mr-1"></i> {tj.status}
+                                                </span>
+                                            </div>
+
+                                            <h4 className="font-bold text-gray-900 text-base group-hover:text-purple-900 transition">
+                                                {tj.judul}
+                                            </h4>
+
+                                            <div className="relative my-4 p-4 bg-purple-50/40 rounded-xl border-l-4 border-purple-600 text-gray-700 text-xs sm:text-sm leading-relaxed italic">
+                                                "{tj.isi}"
+                                            </div>
+                                        </div>
+
+                                        <div className="pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-7 h-7 rounded-full bg-purple-700 text-white font-bold flex items-center justify-center text-[10px]">
+                                                    <i className="fas fa-user-tie"></i>
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-gray-800 text-[11px]">{tj.pemberiTaujiyah}</p>
+                                                    <p className="text-[10px] text-gray-400">{tj.tanggal}</p>
+                                                </div>
+                                            </div>
+
+                                            {(isPengasuh || isAdmin) && (
+                                                <button
+                                                    onClick={() => handleDeleteTaujiyah(tj.id)}
+                                                    className="text-gray-400 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 transition text-xs"
+                                                    title="Hapus Taujiyah"
+                                                >
+                                                    <i className="fas fa-trash-alt"></i>
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* TAB 11: OTORISASI & MAJELIS KHOTMIL QUR'AN 30 JUZ */}
+                {activeTab === 'wisuda' && (
+                    <div className="space-y-6 animate-fade-in">
+                        {/* Header Banner */}
+                        <div className="bg-gradient-to-r from-emerald-950 via-teal-900 to-amber-950 rounded-2xl p-6 text-white shadow-md relative overflow-hidden border border-emerald-800">
+                            <div className="relative z-10">
+                                <div className="flex flex-wrap items-center gap-2 mb-2">
+                                    <span className="bg-amber-400/20 text-amber-300 border border-amber-400/40 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5">
+                                        <i className="fas fa-award text-amber-300"></i> Majelis Otorisasi &amp; Sanad Keilmuan
+                                    </span>
+                                    <span className="bg-white/10 px-3 py-1 rounded-full text-xs font-medium text-emerald-200">
+                                        Khotmil Qur'an 30 Juz
+                                    </span>
+                                </div>
+                                <h3 className="text-xl sm:text-2xl font-bold">
+                                    Sidang Otorisasi Kelulusan &amp; Syahadah Sanad 30 Juz
+                                </h3>
+                                <p className="text-emerald-100 text-xs sm:text-sm mt-1 max-w-2xl leading-relaxed">
+                                    Verifikasi pencapaian 30 Juz Mutqin santri, pengesahan ijazah sanad tahfidz bersambung, dan penerbitan syahadah resmi oleh Pengasuh Pondok Pesantren Darul Kamal.
+                                </p>
+                            </div>
+                            <div className="absolute right-4 -bottom-6 text-white/5 font-arab text-9xl pointer-events-none select-none">
+                                ختم القرآن
+                            </div>
+                        </div>
+
+                        {wisudaSuccessMsg && (
+                            <div className="p-4 bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-xl text-xs flex items-center justify-between shadow-xs">
+                                <span className="font-bold flex items-center gap-2">
+                                    <i className="fas fa-certificate text-emerald-600 text-base"></i> {wisudaSuccessMsg}
+                                </span>
+                                <button onClick={() => setWisudaSuccessMsg('')} className="text-emerald-700 hover:text-emerald-900 text-xs font-bold">
+                                    <i className="fas fa-times"></i>
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Wisuda Metrics */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs flex items-center justify-between">
+                                <div>
+                                    <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">Khatam 30 Juz (Mutakharij)</span>
+                                    <div className="text-2xl font-bold text-emerald-800 mt-1">
+                                        {santriList.filter(s => s.status === 'Mutakharij' || s.totalHafalanJuz === 30).length} <span className="text-xs font-normal text-gray-500">Santri</span>
+                                    </div>
+                                    <p className="text-[11px] text-emerald-700 font-semibold mt-1">
+                                        Sah Disahkan Pengasuh
+                                    </p>
+                                </div>
+                                <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center text-xl shadow-inner">
+                                    <i className="fas fa-stamp"></i>
+                                </div>
+                            </div>
+
+                            <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs flex items-center justify-between">
+                                <div>
+                                    <span className="text-[11px] font-bold text-amber-700 uppercase tracking-wider block">Calon Wisudawan Siap Sidang</span>
+                                    <div className="text-2xl font-bold text-amber-600 mt-1">
+                                        {santriList.filter(s => s.totalHafalanJuz >= 25 && s.status !== 'Mutakharij').length} <span className="text-xs font-normal text-gray-500">Santri</span>
+                                    </div>
+                                    <p className="text-[11px] text-gray-500 mt-1">
+                                        Tahap Uji Tasmi' Terakhir
+                                    </p>
+                                </div>
+                                <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl shadow-inner">
+                                    <i className="fas fa-user-graduate"></i>
+                                </div>
+                            </div>
+
+                            <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs flex items-center justify-between">
+                                <div>
+                                    <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">Rata-rata Hafalan Lembaga</span>
+                                    <div className="text-2xl font-bold text-blue-700 mt-1">
+                                        {(santriList.reduce((acc, c) => acc + c.totalHafalanJuz, 0) / (santriList.length || 1)).toFixed(1)} <span className="text-xs font-normal text-gray-500">Juz/Santri</span>
+                                    </div>
+                                    <p className="text-[11px] text-blue-700 font-semibold mt-1">
+                                        Total {santriList.reduce((acc, c) => acc + c.totalHafalanJuz, 0)} Juz Tersimpan
+                                    </p>
+                                </div>
+                                <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center text-xl shadow-inner">
+                                    <i className="fas fa-book-open"></i>
+                                </div>
+                            </div>
+
+                            <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs flex items-center justify-between">
+                                <div>
+                                    <span className="text-[11px] font-bold text-purple-700 uppercase tracking-wider block">Ijazah Sanad Terbit</span>
+                                    <div className="text-2xl font-bold text-purple-700 mt-1">
+                                        {santriList.filter(s => s.status === 'Mutakharij').length} <span className="text-xs font-normal text-gray-500">Syahadah</span>
+                                    </div>
+                                    <p className="text-[11px] text-purple-700 font-semibold mt-1">
+                                        Bersambung ke Rasulullah SAW
+                                    </p>
+                                </div>
+                                <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center text-xl shadow-inner">
+                                    <i className="fas fa-scroll"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Search & Filter Bar */}
+                        <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-bold text-gray-700">Filter Kategori:</span>
+                                {['Semua', 'Siap Wisuda (>=25 Juz)', 'Khatam 30 Juz / Mutakharij', 'Dalam Proses (<25 Juz)'].map(st => (
+                                    <button
+                                        key={st}
+                                        onClick={() => setFilterWisudaStatus(st)}
+                                        className={`px-3 py-1.5 rounded-xl font-bold transition text-xs ${
+                                            filterWisudaStatus === st
+                                                ? 'bg-emerald-700 text-white shadow-2xs'
+                                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                        }`}
+                                    >
+                                        {st}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="relative">
+                                <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                <input
+                                    type="text"
+                                    placeholder="Cari nama atau NIS santri..."
+                                    value={searchWisudaQuery}
+                                    onChange={(e) => setSearchWisudaQuery(e.target.value)}
+                                    className="pl-8 pr-3 py-1.5 border border-gray-300 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500 w-full sm:w-64"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Candidate Cards Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                            {santriList
+                                .filter(s => {
+                                    const matchesSearch = s.nama.toLowerCase().includes(searchWisudaQuery.toLowerCase()) || s.nis.includes(searchWisudaQuery);
+                                    if (filterWisudaStatus === 'Siap Wisuda (>=25 Juz)') {
+                                        return matchesSearch && s.totalHafalanJuz >= 25 && s.status !== 'Mutakharij';
+                                    }
+                                    if (filterWisudaStatus === 'Khatam 30 Juz / Mutakharij') {
+                                        return matchesSearch && (s.status === 'Mutakharij' || s.totalHafalanJuz === 30);
+                                    }
+                                    if (filterWisudaStatus === 'Dalam Proses (<25 Juz)') {
+                                        return matchesSearch && s.totalHafalanJuz < 25 && s.status !== 'Mutakharij';
+                                    }
+                                    return matchesSearch;
+                                })
+                                .sort((a, b) => b.totalHafalanJuz - a.totalHafalanJuz)
+                                .map(cand => {
+                                    const isMutakharij = cand.status === 'Mutakharij';
+                                    const isReady = cand.totalHafalanJuz >= 30;
+                                    const percent = Math.round((cand.totalHafalanJuz / 30) * 100);
+
+                                    return (
+                                        <div key={cand.id} className="bg-white rounded-2xl border border-gray-200 p-5 shadow-xs flex flex-col justify-between hover:border-emerald-300 transition">
+                                            <div>
+                                                <div className="flex items-start justify-between gap-2 mb-3">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center font-bold text-white shadow-xs ${
+                                                            isMutakharij ? 'bg-gradient-to-br from-amber-500 to-amber-600' :
+                                                            isReady ? 'bg-gradient-to-br from-emerald-600 to-teal-700' :
+                                                            'bg-emerald-800'
+                                                        }`}>
+                                                            {isMutakharij ? <i className="fas fa-crown text-base"></i> : cand.nama.charAt(0)}
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="font-bold text-gray-900 text-sm">{cand.nama}</h4>
+                                                            <p className="text-[11px] text-gray-500">NIS: {cand.nis} • {cand.kelas}</p>
+                                                        </div>
+                                                    </div>
+                                                    <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                                                        isMutakharij ? 'bg-amber-100 text-amber-900 border border-amber-300' :
+                                                        isReady ? 'bg-emerald-100 text-emerald-900 border border-emerald-300' :
+                                                        'bg-gray-100 text-gray-700'
+                                                    }`}>
+                                                        {isMutakharij ? 'Sah Diwisuda' : isReady ? 'Siap Sidang' : 'Berjalan'}
+                                                    </span>
+                                                </div>
+
+                                                <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 text-xs space-y-2 mb-4">
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-gray-500">Pencapaian:</span>
+                                                        <span className="font-bold text-emerald-800">{cand.totalHafalanJuz} dari 30 Juz ({percent}%)</span>
+                                                    </div>
+                                                    <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                                                        <div
+                                                            className={`h-full rounded-full ${
+                                                                isMutakharij ? 'bg-gradient-to-r from-amber-500 to-yellow-400' :
+                                                                'bg-gradient-to-r from-emerald-600 to-teal-500'
+                                                            }`}
+                                                            style={{ width: `${percent}%` }}
+                                                        ></div>
+                                                    </div>
+                                                    <div className="flex justify-between text-[11px] text-gray-500 pt-1">
+                                                        <span>Musyrif: <strong>{cand.musyrif}</strong></span>
+                                                        <span>{cand.halaqah}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2 pt-2 border-t border-gray-100">
+                                                {(isPengasuh || isAdmin) && !isMutakharij && cand.totalHafalanJuz >= 25 && (
+                                                    <button
+                                                        onClick={() => handleSahkanWisuda(cand)}
+                                                        className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 rounded-xl text-xs transition shadow-xs flex items-center justify-center gap-1.5"
+                                                    >
+                                                        <i className="fas fa-stamp"></i> Sahkan Khotmil Qur'an &amp; Sanad
+                                                    </button>
+                                                )}
+
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => handleOpenRaport(cand)}
+                                                        className="flex-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 font-bold py-2 rounded-xl text-xs transition flex items-center justify-center gap-1"
+                                                    >
+                                                        <i className="fas fa-scroll text-emerald-700"></i> Syahadah Resmi
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            setSelectedJuzSantriId(cand.id);
+                                                            setActiveTab('hafalan');
+                                                        }}
+                                                        className="px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2 rounded-xl text-xs transition"
+                                                        title="Buka Peta 30 Juz"
+                                                    >
+                                                        <i className="fas fa-book-quran"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                        </div>
+                    </div>
                 )}
             </main>
 
@@ -5169,6 +6149,99 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                                     className="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-bold shadow-xs transition"
                                 >
                                     Simpan Bimbingan &amp; Beri Paraf
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL TERBITKAN TAUJIYAH PENGASUH */}
+            {isAddTaujiyahOpen && (
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl animate-scale-up">
+                        <div className="flex justify-between items-center pb-3 border-b border-gray-200 mb-4">
+                            <div>
+                                <h3 className="font-bold text-gray-900 text-base flex items-center gap-2">
+                                    <i className="fas fa-feather-alt text-purple-700"></i> Terbitkan Amanat &amp; Taujiyah Pengasuh
+                                </h3>
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                    Nasihat ruhiyah yang akan dipublikasikan ke seluruh santri dan dewan asatidz
+                                </p>
+                            </div>
+                            <button 
+                                onClick={() => setIsAddTaujiyahOpen(false)}
+                                className="text-gray-400 hover:text-gray-600 w-8 h-8 rounded-full flex items-center justify-center hover:bg-gray-100"
+                            >
+                                <i className="fas fa-times"></i>
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSaveTaujiyah} className="space-y-3.5 text-xs">
+                            <div>
+                                <label className="block font-bold text-gray-700 mb-1">Judul / Topik Nasihat</label>
+                                <input 
+                                    type="text" 
+                                    placeholder="Contoh: Menjaga Kemurnian Niat dalam Menghafal Al-Qur'an..."
+                                    value={taujiyahJudul}
+                                    onChange={(e) => setTaujiyahJudul(e.target.value)}
+                                    className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-purple-500 outline-none"
+                                    required
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Tema Pembinaan</label>
+                                    <select
+                                        value={taujiyahTema}
+                                        onChange={(e) => setTaujiyahTema(e.target.value)}
+                                        className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-purple-500 outline-none"
+                                    >
+                                        <option value="Adab & Akhlaq Al-Qur'an">Adab &amp; Akhlaq Al-Qur'an</option>
+                                        <option value="Metode Muroja'ah Mutqin">Metode Muroja'ah Mutqin</option>
+                                        <option value="Keutamaan Khotmil Qur'an">Keutamaan Khotmil Qur'an</option>
+                                        <option value="Motivasi Istiqomah">Motivasi Istiqomah</option>
+                                        <option value="Nasihat Musyrif">Nasihat Musyrif</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Pemberi Taujiyah</label>
+                                    <input 
+                                        type="text" 
+                                        value={taujiyahPemberi}
+                                        onChange={(e) => setTaujiyahPemberi(e.target.value)}
+                                        className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-purple-500 outline-none"
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block font-bold text-gray-700 mb-1">Isi Amanat / Mau'izhah Hasanah</label>
+                                <textarea 
+                                    rows={5}
+                                    placeholder="Tuliskan nasihat bijak untuk santri dan ustadz..."
+                                    value={taujiyahIsi}
+                                    onChange={(e) => setTaujiyahIsi(e.target.value)}
+                                    className="w-full border border-gray-300 p-2.5 rounded-xl text-xs focus:ring-2 focus:ring-purple-500 outline-none leading-relaxed"
+                                    required
+                                />
+                            </div>
+
+                            <div className="flex justify-end gap-2 pt-2 border-t border-gray-200">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsAddTaujiyahOpen(false)}
+                                    className="px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 font-semibold"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-5 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-xl font-bold shadow-xs transition"
+                                >
+                                    Terbitkan Sekarang
                                 </button>
                             </div>
                         </form>

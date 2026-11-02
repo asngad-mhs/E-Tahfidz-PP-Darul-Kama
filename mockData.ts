@@ -1,4 +1,4 @@
-import { Santri, SetoranRecord, User, JuzProgressRecord, JurnalBelajarSantri, RencanaSetoran, KelasTahfidz, MataPelajaranTahfidz } from './types';
+import { Santri, SetoranRecord, User, JuzProgressRecord, JurnalBelajarSantri, RencanaSetoran, KelasTahfidz, MataPelajaranTahfidz, TaujiyahPengasuh } from './types';
 
 export interface QuranSurah {
     nomor: number;
@@ -201,7 +201,28 @@ export const DEMO_USERS: Record<string, { pass: string; user: User }> = {
             id: 'admin',
             nama: 'M. Asngad',
             role: 'admin',
-            kelas: 'Pimpinan & Koordinator Tahfidz'
+            kelas: 'Pimpinan & Koordinator Tahfidz',
+            jabatan: 'Administrator Sistem & Tata Usaha'
+        }
+    },
+    pengasuh: {
+        pass: 'pengasuh123',
+        user: {
+            id: 'pengasuh',
+            nama: 'K.H. Mohammad Sangidun, S.Ag., Al-Hafidz',
+            role: 'pengasuh',
+            jabatan: 'Pengasuh Pondok Pesantren & Pembina LPTQ',
+            halaqah: 'Majelis Pengasuhan Tahfidz'
+        }
+    },
+    kyai: {
+        pass: 'kyai123',
+        user: {
+            id: 'kyai',
+            nama: 'K.H. Mohammad Sangidun, S.Ag., Al-Hafidz',
+            role: 'pengasuh',
+            jabatan: 'Pengasuh Pondok Pesantren & Pembina LPTQ',
+            halaqah: 'Majelis Pengasuhan Tahfidz'
         }
     },
     santri: {
@@ -234,10 +255,60 @@ export const DEMO_USERS: Record<string, { pass: string; user: User }> = {
             id: 'ustadz',
             nama: 'Ustadz Abdullah Mukhtar, S.Pd.I',
             role: 'ustadz',
+            jabatan: 'Musyrif Halaqah Tahfidz',
             halaqah: 'Pembina Halaqah Abu Bakar Ash-Shiddiq'
+        }
+    },
+    ustadzah: {
+        pass: 'ustadzah123',
+        user: {
+            id: 'ustadzah',
+            nama: 'Ustadzah Nurul Hidayah, Al-Hafidzah',
+            role: 'ustadz',
+            jabatan: 'Musyrifah Halaqah Putri',
+            halaqah: 'Pembina Halaqah Khadijah Al-Kubra'
         }
     }
 };
+
+export const INITIAL_TAUJIYAH_PENGASUH: TaujiyahPengasuh[] = [
+    {
+        id: 'tj-1',
+        judul: 'Menjaga Keikhlasan Niat dalam Menghafal Kalamullah',
+        isi: 'Al-Qur\'an adalah wahyu yang suci. Setiap ayat yang dihafalkan bukan untuk berbangga diri di hadapan manusia, melainkan sebagai penerang qalbu dan bekal menghadap Allah SWT. Jagalah shalat malam dan adab hamalatil qur\'an di setiap nafas kehidupan.',
+        tanggal: '2026-10-25',
+        pemberiTaujiyah: 'K.H. Mohammad Sangidun, S.Ag., Al-Hafidz',
+        tema: 'Adab & Akhlaq Al-Qur\'an',
+        status: 'Dipublikasikan'
+    },
+    {
+        id: 'tj-2',
+        judul: 'Pentingnya Istiqomah Muroja\'ah Harian Tanpa Henti',
+        isi: 'Nabi SAW berpesan bahwa hafalan Al-Qur\'an lebih cepat lepas daripada unta yang terlepas dari ikatannya. Maka jangan pernah biarkan satu hari pun berlalu tanpa melantunkan minimal satu juz hafalan lama.',
+        tanggal: '2026-10-15',
+        pemberiTaujiyah: 'K.H. Mohammad Sangidun, S.Ag., Al-Hafidz',
+        tema: 'Metode Muroja\'ah Mutqin',
+        status: 'Dipublikasikan'
+    },
+    {
+        id: 'tj-3',
+        judul: 'Mahkota Kemuliaan bagi Orang Tua Penghafal Al-Qur\'an',
+        isi: 'Ingatlah bahwa setiap tetes peluh dan keletihanmu mengulang-ulang ayat Al-Qur\'an di pesantren ini akan memakaikan mahkota cahaya berkilauan kepada kedua orang tuamu di hari kiamat kelak. Berbaktilah dengan hafalan yang mutqin dan akhlaq yang mulia.',
+        tanggal: '2026-10-08',
+        pemberiTaujiyah: 'K.H. Mohammad Sangidun, S.Ag., Al-Hafidz',
+        tema: 'Keutamaan Khotmil Qur\'an',
+        status: 'Dipublikasikan'
+    },
+    {
+        id: 'tj-4',
+        judul: 'Amanat untuk Dewan Asatidz: Mendidik dengan Sabar & Keteladanan',
+        isi: 'Kepada para ustadz dan musyrif pembina halaqah, bimbinglah santri dengan ketulusan hati. Talaqqi bukan sekadar transfer bacaan huruf, melainkan penanaman ruh dan berkah sanad yang bersambung hingga baginda Rasulullah SAW.',
+        tanggal: '2026-10-01',
+        pemberiTaujiyah: 'K.H. Mohammad Sangidun, S.Ag., Al-Hafidz',
+        tema: 'Nasihat Musyrif',
+        status: 'Dipublikasikan'
+    }
+];
 
 export const INITIAL_SANTRI: Santri[] = [
     {

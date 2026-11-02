@@ -1,11 +1,14 @@
+export type RoleType = 'admin' | 'pengasuh' | 'ustadz' | 'santri';
+
 export interface User {
     id?: string;
     nama: string;
-    role: 'admin' | 'santri' | 'ustadz' | string;
+    role: RoleType | string;
     nis?: string;
     kelas?: string;
     totalJuz?: number;
     halaqah?: string;
+    jabatan?: string;
     [key: string]: any;
 }
 
@@ -136,4 +139,14 @@ export interface MataPelajaranTahfidz {
     bobotSks?: number;
     deskripsi?: string;
     silabus?: string[];
+}
+
+export interface TaujiyahPengasuh {
+    id: string;
+    judul: string;
+    isi: string;
+    tanggal: string;
+    pemberiTaujiyah: string;
+    tema: string;
+    status: 'Dipublikasikan' | 'Draf';
 }

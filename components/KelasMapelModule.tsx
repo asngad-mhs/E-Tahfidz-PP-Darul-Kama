@@ -4,6 +4,7 @@ import { syncKelasDoc, deleteKelasDoc, syncMapelDoc, deleteMapelDoc } from '../s
 
 interface KelasMapelModuleProps {
     isAdmin: boolean;
+    isPengasuh?: boolean;
     isUstadz: boolean;
     isSantri: boolean;
     user: User | null;
@@ -19,6 +20,7 @@ interface KelasMapelModuleProps {
 
 export const KelasMapelModule: React.FC<KelasMapelModuleProps> = ({
     isAdmin,
+    isPengasuh = false,
     isUstadz,
     isSantri,
     user,
@@ -383,11 +385,13 @@ export const KelasMapelModule: React.FC<KelasMapelModuleProps> = ({
                     <div className="flex flex-wrap items-center gap-2 mb-2">
                         <span className={`text-[11px] px-3 py-1 rounded-full font-bold shadow-xs inline-flex items-center gap-1.5 ${
                             isAdmin ? 'bg-amber-400 text-amber-950 border border-amber-300' :
+                            isPengasuh ? 'bg-purple-400 text-purple-950 border border-purple-300' :
                             isUstadz ? 'bg-blue-400 text-blue-950 border border-blue-300' :
                             'bg-emerald-400 text-emerald-950 border border-emerald-300'
                         }`}>
-                            <i className={`fas ${isAdmin ? 'fa-graduation-cap' : isUstadz ? 'fa-chalkboard-teacher' : 'fa-book-reader'}`}></i>
+                            <i className={`fas ${isAdmin ? 'fa-graduation-cap' : isPengasuh ? 'fa-landmark' : isUstadz ? 'fa-chalkboard-teacher' : 'fa-book-reader'}`}></i>
                             {isAdmin ? 'Modul Admin: Manajemen Kelas & Kurikulum' :
+                             isPengasuh ? 'Maktab Pengasuhan: Pengawasan Kelas & Beban Asatidz' :
                              isUstadz ? 'Modul Ustadz: Kelas Binaan & Jadwal Mengajar' :
                              'Modul Santri: Kelas & Mata Pelajaran Saya'}
                         </span>
@@ -397,11 +401,13 @@ export const KelasMapelModule: React.FC<KelasMapelModuleProps> = ({
                     </div>
                     <h3 className="text-xl sm:text-2xl font-bold">
                         {isAdmin && 'Sentra Pengelolaan Kelas Tahfidz & Kurikulum Pesantren'}
+                        {isPengasuh && 'Pengawasan Eksekutif Kelas Tahfidz, Rombel & Asatidz Pengampu'}
                         {isUstadz && `Bimbingan Kelas Halaqah & Mata Pelajaran — ${ustadzName}`}
                         {isSantri && `Informasi Kelas Tahfidz & Jadwal Pembelajaran — ${currentSantri?.nama}`}
                     </h3>
                     <p className="text-emerald-200 text-xs sm:text-sm mt-1 max-w-2xl leading-relaxed">
                         {isAdmin && 'Konfigurasi pembagian kelas tahfidz santri, kapasitas ruangan, pemantauan rasio santri per rombel, dan mata pelajaran kepesantrenan.'}
+                        {isPengasuh && 'Memantau pemerataan santri tiap jenjang (Ula, Wustha, Ulya, Takhassus), kapasitas asrama dan ruang kelas, serta beban mengajar dewan asatidz.'}
                         {isUstadz && 'Pantau santri di bawah binaan kelas Anda, evaluasi kelancaran hafalan, dan kelola agenda pembelajaran tatap muka mapel tajwid & kitab.'}
                         {isSantri && 'Cek jadwal mata pelajaran tahfidz, ruang belajar, kitab panduan, dan kenali rekan-rekan santri di kelas Anda untuk fastabiqul khairat.'}
                     </p>
@@ -412,9 +418,9 @@ export const KelasMapelModule: React.FC<KelasMapelModuleProps> = ({
             </div>
 
             {/* ========================================================================= */}
-            {/* 1. TAMPILAN KHUSUS MODUL ADMINISTRATOR (M. ASNGAD)                         */}
+            {/* 1. TAMPILAN KHUSUS MODUL ADMINISTRATOR & PENGAWASAN PENGASUH             */}
             {/* ========================================================================= */}
-            {isAdmin && (
+            {(isAdmin || isPengasuh) && (
                 <div className="space-y-6">
                     {/* Executive Stat Cards */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

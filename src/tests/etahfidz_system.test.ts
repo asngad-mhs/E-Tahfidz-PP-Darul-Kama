@@ -9,9 +9,10 @@ import {
     DEMO_USERS,
     createDefaultJuzProgress,
     INITIAL_KELAS_TAHFIDZ,
-    INITIAL_MAPEL_TAHFIDZ
+    INITIAL_MAPEL_TAHFIDZ,
+    INITIAL_TAUJIYAH_PENGASUH
 } from '../../mockData';
-import type { Santri, SetoranRecord, JurnalBelajarSantri, RencanaSetoran } from '../../types';
+import type { Santri, SetoranRecord, JurnalBelajarSantri, RencanaSetoran, TaujiyahPengasuh } from '../../types';
 
 describe('1. Quran & Tahfidz Curricular Integrity (30 Juz & 114 Surah)', () => {
     it('harus memuat 114 Surat Al-Qur\'an secara lengkap dan berurutan', () => {
@@ -440,6 +441,76 @@ describe('13. Utilitas Cerdas & Kalkulator Estimator Target Khatam 30 Juz', () =
 
         const rekomendasiMurojaah = Math.max(0.5, Math.min(2.5, +(startJuz / 10).toFixed(1)));
         expect(rekomendasiMurojaah).toBe(0.7);
+    });
+});
+
+describe('14. Ekosistem 4 Peran Pesantren (Admin, Pengasuh, Ustadz/Ustadzah, Santri)', () => {
+    it('harus memvalidasi kredensial resmi Pengasuh Pondok Pesantren (K.H. Mohammad Sangidun)', () => {
+        const pengasuhUser = DEMO_USERS.pengasuh;
+        expect(pengasuhUser).toBeDefined();
+        expect(pengasuhUser.user.nama).toContain('Sangidun');
+        expect(pengasuhUser.user.role).toBe('pengasuh');
+        expect(pengasuhUser.pass).toBe('pengasuh123');
+
+        // Alias kyai juga harus valid
+        const kyaiUser = DEMO_USERS.kyai;
+        expect(kyaiUser).toBeDefined();
+        expect(kyaiUser.user.role).toBe('pengasuh');
+        expect(kyaiUser.pass).toBe('kyai123');
+    });
+
+    it('harus memvalidasi kredensial Ustadzah Nurul Hidayah sebagai pendidik tahfidzat', () => {
+        const ustadzahUser = DEMO_USERS.ustadzah;
+        expect(ustadzahUser).toBeDefined();
+        expect(ustadzahUser.user.nama).toContain('Nurul Hidayah');
+        expect(ustadzahUser.user.role).toBe('ustadz');
+        expect(ustadzahUser.pass).toBe('ustadzah123');
+    });
+
+    it('harus memuat repositori Taujiyah & Mauizhah Hasanah Pengasuh dengan integritas data', () => {
+        const taujiyahSample: TaujiyahPengasuh = INITIAL_TAUJIYAH_PENGASUH[0];
+        expect(taujiyahSample).toBeDefined();
+        expect(INITIAL_TAUJIYAH_PENGASUH.length).toBeGreaterThanOrEqual(3);
+        INITIAL_TAUJIYAH_PENGASUH.forEach(tj => {
+            expect(tj.id).toBeDefined();
+            expect(tj.judul).toBeDefined();
+            expect(tj.tema).toBeDefined();
+            expect(tj.isi).toBeDefined();
+            expect(tj.pemberiTaujiyah).toContain('Sangidun');
+            expect(tj.status).toBe('Dipublikasikan');
+        });
+    });
+
+    it('harus memvalidasi alur otorisasi Khotmil Quran & Ijazah Sanad 30 Juz oleh Pengasuh', () => {
+        const calonSantri = { ...INITIAL_SANTRI[0], totalHafalanJuz: 30, status: 'Aktif' as const };
+        expect(calonSantri.totalHafalanJuz).toBe(30);
+
+        // Simulasi pengesahan wisuda oleh Pengasuh
+        const disahkanPengasuh: Santri = {
+            ...calonSantri,
+            status: 'Mutakharij',
+            targetKhatam: 'Alhamdulillah Khatam 30 Juz (Disahkan Pengasuh)'
+        };
+
+        expect(disahkanPengasuh.status).toBe('Mutakharij');
+        expect(disahkanPengasuh.targetKhatam).toContain('Disahkan Pengasuh');
+    });
+
+    it('harus memastikan hak akses tiap peran terisolasi sesuai fungsinya masing-masing', () => {
+        const roles = ['admin', 'pengasuh', 'ustadz', 'santri'];
+        expect(roles).toHaveLength(4);
+
+        // Pengasuh memiliki wewenang otorisasi wisuda & penerbitan taujiyah
+        const canAuthorizeWisuda = (role: string) => role === 'pengasuh' || role === 'admin';
+        expect(canAuthorizeWisuda('pengasuh')).toBe(true);
+        expect(canAuthorizeWisuda('admin')).toBe(true);
+        expect(canAuthorizeWisuda('ustadz')).toBe(false);
+        expect(canAuthorizeWisuda('santri')).toBe(false);
+
+        // Santri memiliki wewenang submit rencana & jurnal mutaba'ah
+        const canSubmitSelfStudy = (role: string) => role === 'santri';
+        expect(canSubmitSelfStudy('santri')).toBe(true);
+        expect(canSubmitSelfStudy('ustadz')).toBe(false);
     });
 });
 

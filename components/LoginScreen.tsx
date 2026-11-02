@@ -24,7 +24,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ apiUrl, setApiUrl, onL
 
     const isConnectedToGas = apiUrl && !apiUrl.includes(PLACEHOLDER_MARKER) && apiUrl.startsWith('https://script.google.com');
 
-    const handleQuickLogin = (roleKey: 'admin' | 'santri' | 'ustadz') => {
+    const handleQuickLogin = (roleKey: 'admin' | 'pengasuh' | 'ustadz' | 'santri') => {
         const demo = DEMO_USERS[roleKey];
         if (demo) {
             setId(demo.user.id || roleKey);
@@ -79,13 +79,29 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ apiUrl, setApiUrl, onL
                     id: 'admin',
                     nama: 'M. Asngad',
                     role: 'admin',
-                    kelas: 'Pimpinan & Koordinator Tahfidz'
+                    kelas: 'Pimpinan & Koordinator Tahfidz',
+                    jabatan: 'Administrator Sistem & Tata Usaha'
                 });
             }, 300);
             return;
         }
 
-        // Cek Ustadz alternatif
+        // Cek Pengasuh / Kyai alternatif
+        if ((cleanId === 'pengasuh' || cleanId === 'kyai') && (cleanPass === 'pengasuh123' || cleanPass === 'kyai123' || cleanPass === 'admin123')) {
+            setTimeout(() => {
+                setLoading(false);
+                onLoginSuccess({
+                    id: 'pengasuh',
+                    nama: 'K.H. Mohammad Sangidun, S.Ag., Al-Hafidz',
+                    role: 'pengasuh',
+                    jabatan: 'Pengasuh Pondok Pesantren & Pembina LPTQ',
+                    halaqah: 'Majelis Pengasuhan Tahfidz'
+                });
+            }, 300);
+            return;
+        }
+
+        // Cek Ustadz / Ustadzah alternatif
         if ((cleanId === 'ustadz' || cleanId === 'musyrif') && (cleanPass === 'ustadz123' || cleanPass === 'admin123')) {
             setTimeout(() => {
                 setLoading(false);
@@ -93,7 +109,22 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ apiUrl, setApiUrl, onL
                     id: 'ustadz',
                     nama: 'Ustadz Abdullah Mukhtar, S.Pd.I',
                     role: 'ustadz',
-                    kelas: 'Pembina Halaqah Abu Bakar Ash-Shiddiq'
+                    jabatan: 'Musyrif Halaqah Tahfidz',
+                    halaqah: 'Pembina Halaqah Abu Bakar Ash-Shiddiq'
+                });
+            }, 300);
+            return;
+        }
+
+        if (cleanId === 'ustadzah' && (cleanPass === 'ustadzah123' || cleanPass === 'admin123')) {
+            setTimeout(() => {
+                setLoading(false);
+                onLoginSuccess({
+                    id: 'ustadzah',
+                    nama: 'Ustadzah Nurul Hidayah, Al-Hafidzah',
+                    role: 'ustadz',
+                    jabatan: 'Musyrifah Halaqah Putri',
+                    halaqah: 'Pembina Halaqah Khadijah Al-Kubra'
                 });
             }, 300);
             return;
@@ -298,38 +329,51 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ apiUrl, setApiUrl, onL
                     </Button>
                 </form>
 
-                {/* Quick Demo Login Buttons */}
+                {/* Quick Demo Login Buttons - 4 Roles */}
                 <div className="mt-6 pt-5 border-t border-gray-100">
                     <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider text-center mb-2.5">
-                        Masuk Cepat (Akun Uji Coba)
+                        Masuk Cepat Multi-Peran (4 Hak Akses)
                     </p>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         <button
                             type="button"
                             onClick={() => handleQuickLogin('admin')}
                             className="flex flex-col items-center justify-center p-2.5 rounded-lg border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 transition text-xs group"
+                            title="Administrator Sistem & Tata Usaha"
                         >
                             <i className="fas fa-user-shield text-emerald-700 text-sm mb-1 group-hover:scale-110 transition-transform"></i>
                             <span className="font-bold">M. Asngad</span>
-                            <span className="text-[10px] text-gray-500">Admin</span>
+                            <span className="text-[10px] text-emerald-700 font-medium">Admin TU</span>
                         </button>
                         <button
                             type="button"
-                            onClick={() => handleQuickLogin('santri')}
-                            className="flex flex-col items-center justify-center p-2.5 rounded-lg border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-900 transition text-xs group"
+                            onClick={() => handleQuickLogin('pengasuh')}
+                            className="flex flex-col items-center justify-center p-2.5 rounded-lg border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-900 transition text-xs group"
+                            title="Pengasuh Pondok & Pembina LPTQ"
                         >
-                            <i className="fas fa-user-graduate text-blue-700 text-sm mb-1 group-hover:scale-110 transition-transform"></i>
-                            <span className="font-bold">Santri</span>
-                            <span className="text-[10px] text-gray-500">NIS: 12345</span>
+                            <i className="fas fa-mosque text-purple-700 text-sm mb-1 group-hover:scale-110 transition-transform"></i>
+                            <span className="font-bold truncate max-w-[85px]">K.H. Sangidun</span>
+                            <span className="text-[10px] text-purple-700 font-medium">Pengasuh</span>
                         </button>
                         <button
                             type="button"
                             onClick={() => handleQuickLogin('ustadz')}
                             className="flex flex-col items-center justify-center p-2.5 rounded-lg border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-900 transition text-xs group"
+                            title="Ustadz / Musyrif Halaqah"
                         >
                             <i className="fas fa-chalkboard-teacher text-amber-700 text-sm mb-1 group-hover:scale-110 transition-transform"></i>
-                            <span className="font-bold">Ustadz</span>
-                            <span className="text-[10px] text-gray-500">ustadz123</span>
+                            <span className="font-bold">Ust. Abdullah</span>
+                            <span className="text-[10px] text-amber-700 font-medium">Ustadz / Musyrif</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => handleQuickLogin('santri')}
+                            className="flex flex-col items-center justify-center p-2.5 rounded-lg border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-900 transition text-xs group"
+                            title="Santri Penghafal Al-Qur'an"
+                        >
+                            <i className="fas fa-user-graduate text-blue-700 text-sm mb-1 group-hover:scale-110 transition-transform"></i>
+                            <span className="font-bold">M. Fauzan</span>
+                            <span className="text-[10px] text-blue-700 font-medium">Santri (7 Juz)</span>
                         </button>
                     </div>
                 </div>
