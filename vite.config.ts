@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
@@ -7,5 +8,9 @@ export default defineConfig({
   server: {
     port: 3000,
     host: '0.0.0.0',
+  },
+  test: {
+    include: ['src/tests/**/*.test.ts'],
+    exclude: ['e2e/**', 'node_modules/**'],
   },
 })
