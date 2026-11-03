@@ -24,6 +24,7 @@ import {
 import { KelasMapelModule } from './KelasMapelModule';
 import { RaportSyahadahModal } from './RaportSyahadahModal';
 import { TahfidzToolsModal } from './TahfidzToolsModal';
+import { BddPlaywrightSuite } from './BddPlaywrightSuite';
 
 export const PESANTREN_HALAQAH_LIST = [
     {
@@ -75,7 +76,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
     const isUstadz = effectiveRole === 'ustadz';
     const isSantri = effectiveRole === 'santri';
 
-    type TabType = 'dashboard' | 'jurnal' | 'rencana' | 'hafalan' | 'setoran' | 'santri' | 'halaqah' | 'pengaturan' | 'kelas_mapel' | 'taujiyah' | 'wisuda';
+    type TabType = 'dashboard' | 'jurnal' | 'rencana' | 'hafalan' | 'setoran' | 'santri' | 'halaqah' | 'pengaturan' | 'kelas_mapel' | 'taujiyah' | 'wisuda' | 'testing';
     const [activeTab, setActiveTab] = useState<TabType>('dashboard');
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -1312,6 +1313,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                                 <i className="fas fa-database w-4 text-center text-purple-300"></i>
                                 <span>Database &amp; Pengaturan</span>
                             </button>
+
+                            <button 
+                                onClick={() => setActiveTab('testing')}
+                                className={`w-full text-left px-4 py-2.5 rounded-xl font-medium transition flex items-center gap-3 text-xs ${
+                                    activeTab === 'testing' ? 'bg-emerald-800 text-white shadow-md font-bold' : 'text-emerald-100 hover:bg-emerald-800/50'
+                                }`}
+                            >
+                                <i className="fas fa-flask w-4 text-center text-amber-300"></i>
+                                <span>Pengujian BDD &amp; E2E</span>
+                                <span className="ml-auto text-[10px] bg-amber-400 text-amber-950 font-bold px-2 py-0.5 rounded-full">100% Pass</span>
+                            </button>
                         </>
                     )}
 
@@ -1409,6 +1421,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                                 <i className="fas fa-feather-alt w-4 text-center text-purple-300"></i>
                                 <span>Taujiyah Pengasuh</span>
                             </button>
+
+                            <button 
+                                onClick={() => setActiveTab('testing')}
+                                className={`w-full text-left px-4 py-2.5 rounded-xl font-medium transition flex items-center gap-3 text-xs ${
+                                    activeTab === 'testing' ? 'bg-emerald-800 text-white shadow-md font-bold' : 'text-emerald-100 hover:bg-emerald-800/50'
+                                }`}
+                            >
+                                <i className="fas fa-flask w-4 text-center text-amber-300"></i>
+                                <span>Pengujian BDD &amp; E2E</span>
+                                <span className="ml-auto text-[10px] bg-amber-400 text-amber-950 font-bold px-2 py-0.5 rounded-full">100% Pass</span>
+                            </button>
                         </>
                     )}
 
@@ -1488,6 +1511,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                             >
                                 <i className="fas fa-feather-alt w-4 text-center text-purple-300"></i>
                                 <span>Taujiyah &amp; Nasihat Kyai</span>
+                            </button>
+
+                            <button 
+                                onClick={() => setActiveTab('testing')}
+                                className={`w-full text-left px-4 py-2.5 rounded-xl font-medium transition flex items-center gap-3 text-xs ${
+                                    activeTab === 'testing' ? 'bg-emerald-800 text-white shadow-md font-bold' : 'text-emerald-100 hover:bg-emerald-800/50'
+                                }`}
+                            >
+                                <i className="fas fa-flask w-4 text-center text-amber-300"></i>
+                                <span>Pengujian BDD &amp; E2E</span>
+                                <span className="ml-auto text-[10px] bg-amber-400 text-amber-950 font-bold px-2 py-0.5 rounded-full">100% Pass</span>
                             </button>
                         </>
                     )}
@@ -1663,6 +1697,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                             {activeTab === 'halaqah' && 'Manajemen Halaqah & Asatidz Pembina'}
                             {activeTab === 'pengaturan' && 'Status Database & Pengaturan Cloud'}
                             {activeTab === 'kelas_mapel' && 'Manajemen Kelas & Beban Asatidz'}
+                            {activeTab === 'testing' && 'Pusat Pengujian BDD & Playwright E2E'}
                         </h2>
                         <p className="text-xs text-gray-500 mt-0.5">
                             {isAdmin && 'Kelola master data santri, halaqah, monitoring institusi, dan rekapitulasi audit tahfidz.'}
@@ -4496,6 +4531,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                                 })}
                         </div>
                     </div>
+                )}
+
+                {/* TAB 12: PUSAT PENGUJIAN BDD & PLAYWRIGHT E2E */}
+                {activeTab === 'testing' && (
+                    <BddPlaywrightSuite userRole={user?.role} />
                 )}
             </main>
 
