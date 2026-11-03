@@ -78,6 +78,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
     type TabType = 'dashboard' | 'jurnal' | 'rencana' | 'hafalan' | 'setoran' | 'santri' | 'halaqah' | 'pengaturan' | 'kelas_mapel' | 'taujiyah' | 'wisuda';
     const [activeTab, setActiveTab] = useState<TabType>('dashboard');
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
     // Persisted Taujiyah Pengasuh List
     const [taujiyahList, setTaujiyahList] = useState<TaujiyahPengasuh[]>(() => {
@@ -1508,7 +1509,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                     </div>
                     <Button 
                         variant="danger" 
-                        onClick={onLogout} 
+                        onClick={() => setShowLogoutConfirm(true)} 
                         className="w-full py-2 text-xs flex justify-center items-center"
                         icon="fas fa-sign-out-alt"
                     >
@@ -1626,7 +1627,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                             </button>
                         </>
                     )}
-                    <button onClick={onLogout} className="w-full text-left py-2 px-3 rounded bg-red-600/80 text-white font-semibold flex items-center gap-2 mt-2">
+                    <button onClick={() => { setMobileMenuOpen(false); setShowLogoutConfirm(true); }} className="w-full text-left py-2 px-3 rounded bg-red-600/80 text-white font-semibold flex items-center gap-2 mt-2">
                         <i className="fas fa-sign-out-alt w-5"></i> Keluar Akun
                     </button>
                 </div>
@@ -6228,6 +6229,56 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, apiUrl = '
                 allMapel={mapelList}
                 onRestoreData={handleRestoreData}
             />
+
+            {/* MODAL KONFIRMASI KELUAR AKUN (LOGOUT CONFIRMATION) */}
+            {showLogoutConfirm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
+                    <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-emerald-100 text-center transform transition-all animate-scale-up">
+                        <div className="w-16 h-16 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4 border border-red-200 text-2xl shadow-inner">
+                            <i className="fas fa-sign-out-alt"></i>
+                        </div>
+                        
+                        <h3 className="text-xl font-bold text-gray-900 mb-1">
+                            Konfirmasi Keluar Akun
+                        </h3>
+                        <p className="text-xs font-semibold text-emerald-700 tracking-wide uppercase mb-3">
+                            Sistem E-Tahfidz Pesantren Darul Kamal
+                        </p>
+
+                        <div className="text-xs sm:text-sm text-gray-600 mb-6 leading-relaxed bg-emerald-50/50 p-4 rounded-xl border border-emerald-100 text-left">
+                            <p className="font-bold text-gray-800 mb-1 flex items-center gap-2">
+                                <i className="fas fa-user-circle text-emerald-700"></i>
+                                {user?.nama || 'Pengguna'} ({isAdmin ? 'Admin TU' : isPengasuh ? 'Pengasuh Pondok' : isUstadz ? 'Ustadz Pembina' : 'Santri Tahfidz'})
+                            </p>
+                            <p className="text-gray-600">
+                                Apakah Anda yakin ingin keluar dari sistem? Anda dapat memilih untuk <strong>Tetap di Aplikasi</strong> atau <strong>Keluar Akun</strong> ke halaman login.
+                            </p>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row gap-2.5 justify-center">
+                            <button
+                                type="button"
+                                onClick={() => setShowLogoutConfirm(false)}
+                                className="flex-1 py-2.5 px-4 rounded-xl border border-gray-300 bg-white hover:bg-gray-100 text-gray-800 font-bold text-xs transition flex items-center justify-center gap-2 shadow-2xs"
+                            >
+                                <i className="fas fa-shield-alt text-emerald-600"></i>
+                                Batal / Tetap Masuk
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setShowLogoutConfirm(false);
+                                    onLogout();
+                                }}
+                                className="flex-1 py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-md shadow-red-600/20 transition flex items-center justify-center gap-2"
+                            >
+                                <i className="fas fa-sign-out-alt"></i>
+                                Ya, Keluar Akun
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
