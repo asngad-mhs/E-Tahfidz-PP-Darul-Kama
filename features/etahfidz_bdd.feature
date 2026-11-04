@@ -15,6 +15,22 @@ Fitur: Sistem Manajemen E-Tahfidz Pesantren Darul Kamal
     Dan Setelah Saya berhasil masuk ke Dashboard
     Maka Tombol switcher Cepat Peran di atas header aplikasi disembunyikan (hidden) untuk menjaga privasi sesi
 
+  @keamanan @proteksi
+  Skenario: Sistem Keamanan Proteksi Login dan Penguncian Akun Bertahap
+    Ketika Saya melakukan percobaan login dengan kata sandi yang salah sebanyak 2 kali
+    Maka Sistem secara otomatis mengaktifkan Tantangan Keamanan Anti-Bot (CAPTCHA Math Challenge)
+    Ketika Saya melakukan kesalahan kata sandi ke-3 secara berturut-turut
+    Maka Sistem mengunci sesi login sementara selama 30 detik dan mencatat kejadian pada Audit Log Keamanan
+
+  @keamanan @resetpass
+  Skenario: Verifikasi Identitas dan Reset Kata Sandi Akun Pengguna
+    Ketika Saya menekan tombol "Lupa Kata Sandi?" pada halaman login
+    Maka Sistem menampilkan Modal Dialog Verifikasi Identitas Akun
+    Ketika Saya memilih peran "Santri" dan menginput NIS "12345" beserta Nama Verifikasi
+    Maka Identitas terverifikasi dan Sistem menampilkan Form Pembuatan Kata Sandi Baru
+    Ketika Saya menginput Kata Sandi Baru minimal 6 karakter dan menyimpan perubahan
+    Maka Kata sandi baru tersimpan secara aman dan Saya dapat langsung login dengan kata sandi baru tersebut
+
   @keamanan @logout
   Skenario: Konfirmasi Dialog Modal Sebelum Keluar Sesi untuk Semua Peran
     Dengan Saya sudah login ke Dashboard E-Tahfidz sebagai pengguna "Pengasuh"

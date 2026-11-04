@@ -480,6 +480,30 @@ export const BddPlaywrightSuite: React.FC<BddPlaywrightSuiteProps> = () => {
                 </div>
               )}
 
+              {/* SKENARIO BARU: SECURITY PROTEKSI LOGIN */}
+              {(selectedRole === 'all' || selectedRole === 'admin' || selectedRole === 'pengasuh' || selectedRole === 'musyrif' || selectedRole === 'santri') && (
+                <div className="border-l-2 border-red-500 pl-3 py-1 space-y-1 bg-gray-800/30 rounded-r-lg">
+                  <div className="text-red-400 text-[11px] font-bold">@keamanan @proteksi</div>
+                  <div className="text-emerald-400 font-bold">Skenario: Proteksi Keamanan Login &amp; Penguncian Akun Bertahap</div>
+                  <div className="pl-2 text-gray-300"><span className="text-blue-300 font-bold">Ketika</span> Saya melakukan percobaan login dengan kata sandi yang salah sebanyak 2 kali</div>
+                  <div className="pl-2 text-gray-300"><span className="text-blue-300 font-bold">Maka</span> Sistem secara otomatis mengaktifkan Tantangan CAPTCHA Anti-Bot</div>
+                  <div className="pl-2 text-gray-300"><span className="text-blue-300 font-bold">Ketika</span> Saya melakukan kesalahan kata sandi ke-3 secara berturut-turut</div>
+                  <div className="pl-2 text-gray-300"><span className="text-blue-300 font-bold">Maka</span> Sistem mengunci sesi login sementara 30 detik dan mencatat Audit Log Keamanan</div>
+                </div>
+              )}
+
+              {/* SKENARIO BARU: FITUR LUPA PASSWORD */}
+              {(selectedRole === 'all' || selectedRole === 'admin' || selectedRole === 'pengasuh' || selectedRole === 'musyrif' || selectedRole === 'santri') && (
+                <div className="border-l-2 border-emerald-500 pl-3 py-1 space-y-1 bg-gray-800/30 rounded-r-lg">
+                  <div className="text-emerald-400 text-[11px] font-bold">@keamanan @resetpass</div>
+                  <div className="text-emerald-400 font-bold">Skenario: Verifikasi Identitas &amp; Reset Kata Sandi Akun Pengguna</div>
+                  <div className="pl-2 text-gray-300"><span className="text-blue-300 font-bold">Ketika</span> Saya menekan tombol "Lupa Kata Sandi?"</div>
+                  <div className="pl-2 text-gray-300"><span className="text-blue-300 font-bold">Maka</span> Sistem menampilkan Modal Verifikasi Identitas Akun berdasarkan NIS / NIP / Passkey</div>
+                  <div className="pl-2 text-gray-300"><span className="text-blue-300 font-bold">Ketika</span> Identitas terverifikasi dan Saya memasukkan kata sandi baru</div>
+                  <div className="pl-2 text-gray-300"><span className="text-blue-300 font-bold">Maka</span> Kata sandi diperbarui dan Saya dapat langsung login dengan kata sandi baru</div>
+                </div>
+              )}
+
               {/* SKENARIO 2 */}
               {(selectedRole === 'all' || selectedRole === 'admin' || selectedRole === 'pengasuh' || selectedRole === 'musyrif' || selectedRole === 'santri') && (
                 <div className="border-l-2 border-purple-500 pl-3 py-1 space-y-1 bg-gray-800/30 rounded-r-lg">

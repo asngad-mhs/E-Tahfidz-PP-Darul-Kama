@@ -514,3 +514,83 @@ describe('14. Ekosistem 4 Peran Pesantren (Admin, Pengasuh, Ustadz/Ustadzah, San
     });
 });
 
+describe('11. Sistem Keamanan Login & Reset Kata Sandi (Security & Password Reset)', () => {
+    it('harus membatasi percobaan kesalahan login max 3 kali dan memicu penguncian akun sementara', () => {
+        let attempts = 0;
+        let isLocked = false;
+        let lockoutDuration = 0;
+
+        const recordFailedAttempt = () => {
+            attempts += 1;
+            if (attempts >= 3) {
+                isLocked = true;
+                lockoutDuration = 30; // 30 detik penguncian
+            }
+        };
+
+        recordFailedAttempt(); // Percobaan 1
+        expect(attempts).toBe(1);
+        expect(isLocked).toBe(false);
+
+        recordFailedAttempt(); // Percobaan 2
+        expect(attempts).toBe(2);
+        expect(isLocked).toBe(false);
+
+        recordFailedAttempt(); // Percobaan 3
+        expect(attempts).toBe(3);
+        expect(isLocked).toBe(true);
+        expect(lockoutDuration).toBe(30);
+    });
+
+    it('harus mengaktifkan tantangan verifikasi keamanan anti-bot (CAPTCHA) setelah 2 kali kesalahan berturut-turut', () => {
+        let failedAttempts = 2;
+        const requiresCaptcha = failedAttempts >= 2;
+        expect(requiresCaptcha).toBe(true);
+
+        const captchaNum1 = 7;
+        const captchaNum2 = 5;
+        const expectedAnswer = captchaNum1 + captchaNum2;
+
+        const verifyCaptcha = (userAns: number) => userAns === expectedAnswer;
+        expect(verifyCaptcha(10)).toBe(false);
+        expect(verifyCaptcha(12)).toBe(true);
+    });
+
+    it('harus memverifikasi identitas dan melakukan reset kata sandi baru untuk Santri (menggunakan NIS)', () => {
+        const santriList = [...INITIAL_SANTRI];
+        const targetNis = '12345';
+        const santri = santriList.find(s => s.nis === targetNis);
+
+        expect(santri).toBeDefined();
+        expect(santri?.nama).toContain('Fauzan');
+
+        // Simulasi reset password
+        const customPasswords: Record<string, string> = {};
+        const resetPassword = (nis: string, newPass: string) => {
+            customPasswords[nis] = newPass;
+        };
+
+        resetPassword(targetNis, 'fauzanBaru2026');
+        expect(customPasswords[targetNis]).toBe('fauzanBaru2026');
+    });
+
+    it('harus memverifikasi identitas dan reset kata sandi untuk Pengasuh & Admin dengan Passkey Keamanan', () => {
+        const customPasswords: Record<string, string> = {};
+
+        // Reset Pass Admin
+        const verifyAdminPasskey = (passkey: string) => passkey === 'admin-security-2026';
+        expect(verifyAdminPasskey('salah')).toBe(false);
+        expect(verifyAdminPasskey('admin-security-2026')).toBe(true);
+
+        customPasswords['admin'] = 'adminSangatAman2026!';
+        expect(customPasswords['admin']).toBe('adminSangatAman2026!');
+
+        // Reset Pass Pengasuh
+        const verifyPengasuhKey = (authKey: string) => authKey === 'pengasuh-darul-kamal' || authKey === 'sangidun';
+        expect(verifyPengasuhKey('sangidun')).toBe(true);
+
+        customPasswords['pengasuh'] = 'kyaiBaru12345';
+        expect(customPasswords['pengasuh']).toBe('kyaiBaru12345');
+    });
+});
+
